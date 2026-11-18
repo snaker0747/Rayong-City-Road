@@ -406,8 +406,8 @@ body.rp-open { overflow: hidden; }
 .rp-stage { flex: 1; overflow: auto; padding: 20px 8px 40px; -webkit-overflow-scrolling: touch; }
 
 /* กระดาษ A4 — ระยะขอบแบบเอกสารราชการ: บน 2.5 ซม. ล่าง 2 ซม. ซ้าย 3 ซม. ขวา 2 ซม. ตัวอักษร 16 pt ทั้งฉบับ */
-.rp-paper { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.18);
-  padding: 25mm 20mm 20mm 30mm; box-sizing: border-box; color: #000;
+.rp-paper { width: 297mm; min-height: 210mm; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  padding: 20mm 20mm 20mm 25mm; box-sizing: border-box; color: #000;
   font-family: 'TH Sarabun Doc', 'TH Sarabun New', sans-serif; font-size: 16pt; line-height: 1.25; }
 .rp-paper * { font-family: inherit; font-size: 16pt; }
 .rp-head { text-align: center; margin: 0 0 12pt; }
@@ -435,6 +435,8 @@ body.rp-open { overflow: hidden; }
 .nw { white-space: nowrap; }
 .rp-kpi th, .rp-kpi td { text-align: center; width: 20%; }
 .rp-kpi td { font-weight: 700; }
+.rp-cols { display: flex; gap: 8mm; align-items: flex-start; break-inside: avoid; }
+.rp-cols > .rp-t { flex: 1 1 0; min-width: 0; }
 .rp-keep, .rp-paper section.rp-keep, .rp-t tbody.rp-tail { break-inside: avoid; page-break-inside: avoid; }
 .rp-appendix { break-before: page; page-break-before: always; }
 
@@ -500,8 +502,8 @@ body.rp-open { overflow: hidden; }
 }
 
 /* ---------------------------------------------------------------- ตอนพิมพ์ */
-@page { size: A4; margin: 25mm 20mm 20mm 30mm;
-  @bottom-left { content: var(--rp-date, ""); font-family: 'TH Sarabun Doc'; font-size: 16pt; }
+@page { size: A4 landscape; margin: 20mm 20mm 20mm 25mm;
+  @bottom-left { content: "จัดทำโดย ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง    " var(--rp-date, ""); font-family: 'TH Sarabun Doc'; font-size: 16pt; white-space: pre; }
   @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-family: 'TH Sarabun Doc'; font-size: 16pt; } }
 @media print {
   body.rp-open > *:not(#report-view) { display: none !important; }

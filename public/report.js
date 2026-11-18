@@ -1,4 +1,4 @@
-/* RCRNIS — รายงานสรุปข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (A4, TH Sarabun New 16 pt, เลขอารบิก)
+/* RCRNIS — รายงานสรุปข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (A4 แนวนอน, TH Sarabun New 16 pt, เลขอารบิก)
    ใช้ตัวแปร/ฟังก์ชันจาก app.js (S, esc, fmt, landGroup, surfGroup, isPublic, regState, commName, ...) */
 'use strict';
 
@@ -72,27 +72,29 @@ function buildReport(o) {
 
   if (o.sec.summary) {
     const grp = (t) => `<tr class="rp-grp"><td colspan="4">${t}</td></tr>`;
+    // A4 แนวนอน: แบ่งภาพรวมเป็น 2 ตารางคู่กัน ให้จบในหน้าแรก
+    const tbl = (rows) => `<table class="rp-t"><colgroup><col style="width:49%"><col style="width:18%"><col style="width:15%"><col style="width:18%"></colgroup>
+      <thead><tr><th>รายการ</th><th>จำนวน</th><th>หน่วย</th><th>ร้อยละ</th></tr></thead><tbody>${rows}</tbody></table>`;
     const row = (l, v, u, p = '') => `<tr><td class="ind">${l}</td><td class="n">${v}</td><td class="c">${u}</td><td class="n">${p}</td></tr>`;
     parts.push(`<section>${H('ภาพรวมข้อมูลในระบบ')}
       ${comm ? `<p class="rp-note">ขอบเขตข้อมูล ชุมชน${esc(comm.name)}</p>` : ''}
-      <table class="rp-t"><colgroup><col style="width:56%"><col style="width:15%"><col style="width:15%"><col style="width:14%"></colgroup>
-      <thead><tr><th>รายการ</th><th>จำนวน</th><th>หน่วย</th><th>ร้อยละ</th></tr></thead><tbody>
-      ${grp('ถนน')}
+      <div class="rp-cols">
+      ${tbl(`${grp('ถนน')}
       ${comm ? '' : row('ชุมชน', fmt(S.communities.length), 'ชุมชน')}
       ${row('ถนนทั้งหมด', fmt(R.length), 'สาย')}
-      ${row(`ระยะทางรวม (${fmt(withLen.length)} สายที่มีข้อมูล)`, fmt(km, 2), 'กิโลเมตร')}
+      ${row(`ระยะทางรวม (${fmt(withLen.length)} สายที่มีข้อมูล)`, fmt(km, 2), 'กม.')}
       ${row('ถนนสาธารณะ', fmt(PUB.length), 'สาย', pctTxt(PUB.length, R.length))}
       ${row('ถนนส่วนบุคคล', fmt(landCount('ส่วนบุคคล')), 'สาย', pctTxt(landCount('ส่วนบุคคล'), R.length))}
       ${row('ถนนในที่ราชพัสดุ', fmt(landCount('ราชพัสดุ')), 'สาย', pctTxt(landCount('ราชพัสดุ'), R.length))}
       ${row('ถนนในที่วัด', fmt(landCount('ที่วัด')), 'สาย', pctTxt(landCount('ที่วัด'), R.length))}
-      ${check.length ? row('ถนนไม่ใช่สาธารณะที่มีรหัสทะเบียน', fmt(check.length), 'สาย') : ''}
-      ${grp('ถนนสาธารณะ (ร้อยละของถนนสาธารณะ)')}
+      ${check.length ? row('ถนนไม่ใช่สาธารณะที่มีรหัสทะเบียน', fmt(check.length), 'สาย') : ''}`)}
+      ${tbl(`${grp('ถนนสาธารณะ (ร้อยละของถนนสาธารณะ)')}
       ${row('ขึ้นทะเบียนทางแล้ว', fmt(reg.length), 'สาย', pctTxt(reg.length, PUB.length))}
       ${row('ยังไม่ขึ้นทะเบียนทาง', fmt(unreg.length), 'สาย', pctTxt(unreg.length, PUB.length))}
       ${row('ผิวไม่ถาวร (ลูกรัง/หินคลุก)', fmt(unpaved.length), 'สาย', pctTxt(unpaved.length, PUB.length))}
       ${comm ? '' : `${grp('สะพาน')}${row('สะพานทั้งหมด', fmt(B.length), 'แห่ง')}${row('ความยาวรวม', fmt(bLen, 1), 'เมตร')}
-      ${grp('สวนสาธารณะ')}${row('สวนสาธารณะทั้งหมด', fmt(P.length), 'แห่ง')}${row('พื้นที่รวม', fmt(pArea, 0), 'ตร.ม.')}${row('พื้นที่รวม', fmt(pArea / 1600, 1), 'ไร่')}`}
-      </tbody></table></section>`);
+      ${grp('สวนสาธารณะ')}${row('สวนสาธารณะทั้งหมด', fmt(P.length), 'แห่ง')}${row('พื้นที่รวม', fmt(pArea, 0), 'ตร.ม.')}${row('พื้นที่รวม', fmt(pArea / 1600, 1), 'ไร่')}`}`)}
+      </div></section>`);
   }
 
   if (o.sec.stats) {
@@ -136,7 +138,7 @@ function buildReport(o) {
     const known = unpaved.filter((r) => areaSqm(r) != null);
     const area = known.reduce((a, r) => a + areaSqm(r), 0);
     parts.push(`<section>${H(`ถนนสาธารณะผิวไม่ถาวร (ลูกรัง/หินคลุก) (${fmt(unpaved.length)} สาย)`)}
-      ${unpaved.length ? `<table class="rp-t"><colgroup><col style="width:5%"><col style="width:28%"><col style="width:20%"><col style="width:14%"><col style="width:8%"><col style="width:13%"><col style="width:12%"></colgroup>
+      ${unpaved.length ? `<table class="rp-t"><colgroup><col style="width:5%"><col style="width:36%"><col style="width:19%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:11%"></colgroup>
       <thead><tr><th>ที่</th><th>ชื่อถนน</th><th>ชุมชน</th><th>ผิว<br>จราจร</th><th>ยาว<br>(ม.)</th><th>กว้าง<br>ผิว (ม.)</th><th>พื้นที่<br>(ตร.ม.)</th></tr></thead>
       ${tbodyWithTotal(unpaved.map((r, i) => `<tr><td class="n">${i + 1}</td><td>${esc(r.name)}${r.reg_code ? `<br><span class="sub">${nb(esc(r.reg_code))}</span>` : ''}</td><td>${esc(commName(r.community_id))}</td><td>${esc(r.surface)}</td>
         <td class="n">${r.length_km != null ? fmt(r.length_km * 1000, 0) : '–'}</td><td class="n">${nb(fmtRange(r.surf_w_min, r.surf_w_max) || '–')}</td>
@@ -165,7 +167,7 @@ function buildReport(o) {
   if (o.sec.bridges && !comm) {
     const v1 = (x) => (x != null ? fmt(x, 1) : '–');
     parts.push(`<section>${H(`ข้อมูลสะพาน (${fmt(B.length)} แห่ง)`)}
-      ${B.length ? `<table class="rp-t"><colgroup><col style="width:6%"><col style="width:34%"><col style="width:15%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>
+      ${B.length ? `<table class="rp-t"><colgroup><col style="width:5%"><col style="width:46%"><col style="width:14%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>
       <thead><tr><th rowspan="2">ที่</th><th rowspan="2">ชื่อสะพาน</th><th rowspan="2">ประเภท</th><th colspan="3">ขนาด (ม.)</th><th colspan="2">ทางเท้า (ม.)</th></tr>
       <tr><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>ซ้าย</th><th>ขวา</th></tr></thead>
       ${tbodyWithTotal(B.slice().sort((a, b) => a.seq - b.seq).map((x, i) => `<tr><td class="n">${i + 1}</td><td>${esc(x.name)}</td><td>${esc(x.bridge_type || '–')}</td><td class="n">${v1(x.width_m)}</td><td class="n">${v1(x.length_m)}</td><td class="n">${v1(x.height_m)}</td><td class="n">${v1(x.walk_l_m)}</td><td class="n">${v1(x.walk_r_m)}</td></tr>`),
@@ -191,7 +193,7 @@ function buildReport(o) {
       return `<tbody class="rp-tail"><tr class="rp-grp"><td colspan="6">ชุมชน${esc(c.name)} (${rs.length} สาย)</td></tr>${rows[0]}</tbody><tbody>${rows.slice(1).join('')}</tbody>`;
     }).join('');
     parts.push(`<section class="rp-appendix">${H(`รายชื่อถนนทั้งหมดในระบบ (${fmt(R.length)} สาย)`)}
-      <table class="rp-t"><colgroup><col style="width:6%"><col style="width:36%"><col style="width:16%"><col style="width:20%"><col style="width:9%"><col style="width:13%"></colgroup>
+      <table class="rp-t"><colgroup><col style="width:5%"><col style="width:42%"><col style="width:16%"><col style="width:19%"><col style="width:8%"><col style="width:10%"></colgroup>
       <thead><tr><th>ที่</th><th>ชื่อถนน</th><th>ที่ดิน</th><th>ผิวจราจร</th><th>ยาว<br>(ม.)</th><th>กว้าง<br>ผิว (ม.)</th></tr></thead>
       ${body}</table>
       <p class="rp-note">หมายเหตุ ตัวเลขใต้ชื่อถนนคือรหัสทะเบียนทาง เครื่องหมาย "–" คือไม่มีข้อมูลในระบบ</p></section>`);
@@ -235,7 +237,7 @@ function openReport() {
   const fitPaper = () => {
     const paper = $('#rp-paper', v);
     const avail = $('.rp-stage', v).clientWidth - 16;
-    paper.style.zoom = avail < 794 ? String(Math.max(avail / 794, 0.3)) : '';
+    paper.style.zoom = avail < 1123 ? String(Math.max(avail / 1123, 0.25)) : ''; // A4 แนวนอน = 297 มม. ≈ 1123 px
   };
   const render = () => {
     read();
