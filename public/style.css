@@ -1,3 +1,4 @@
+[hidden] { display: none !important; }
 :root {
   --bg: #f4f6f5;
   --panel: #ffffff;
@@ -176,3 +177,9 @@ dl.detail dd { margin: 0; padding: 5px 0; border-bottom: 1px dashed var(--line);
   dl.detail { grid-template-columns: 130px 1fr; }
   .comp-row { grid-template-columns: 110px 1fr 48px; }
 }
+
+/* login */
+.login-card { max-width: 400px; margin: 60px auto; padding: 28px; }
+.me-btn { color: #fff; font-size: 13px; padding: 4px 10px; border: 1px solid rgba(255,255,255,.35) !important; }
+.me-btn:hover { background: rgba(255,255,255,.12); }
+@media (max-width: 760px) { .me-btn#btn-pw { display: none; } }

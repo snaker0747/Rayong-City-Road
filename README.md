@@ -6,7 +6,7 @@
 
 ระบบดูและแก้ไขข้อมูลถนน 649 สายใน 29 ชุมชน สะพาน 25 แห่ง และสวนสาธารณะ 4 แห่ง ผ่านเว็บ แทนการเปิดไฟล์ Excel
 
-ทำงานบน **Cloudflare Workers + D1** และเข้าสู่ระบบผ่าน **Cloudflare Access**
+ทำงานบน **Cloudflare Workers + D1** มีระบบล็อกอินของตัวเอง (ชื่อผู้ใช้ + รหัสผ่าน)
 
 พัฒนาโดย ฝ่ายสาธารณูปโภค ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง
 
@@ -26,98 +26,62 @@
 
 ### สิทธิ์ผู้ใช้
 
-| บทบาท | ทำอะไรได้ |
+| สิทธิ์ | ทำอะไรได้ |
 |---|---|
-| ดูอย่างเดียว | ดู ค้นหา และส่งออก Excel (ผู้ที่ผ่าน Access แต่ไม่อยู่ในรายชื่อผู้ใช้ จะได้สิทธิ์นี้) |
-| แก้ไขได้ | เพิ่มและแก้ไขข้อมูล ดูประวัติรายการ (แก้รหัสทะเบียนทางไม่ได้) |
-| ผู้ดูแล | ทุกอย่าง รวมถึงแก้รหัสทะเบียน, ซ่อน/กู้คืน, ดูประวัติทั้งหมด, จัดการผู้ใช้, ดาวน์โหลดสำรองข้อมูล |
+| ผู้ใช้งาน (user) | ดู ค้นหา ส่งออก Excel เพิ่มและแก้ไขข้อมูล ดูประวัติรายการ (แก้รหัสทะเบียนทางไม่ได้) |
+| ผู้ดูแลระบบ (admin) | ทุกอย่าง รวมถึงแก้รหัสทะเบียน ซ่อน/กู้คืน ดูประวัติทั้งหมด จัดการผู้ใช้ และดาวน์โหลดสำรองข้อมูล |
+
+### ความปลอดภัย
+
+- **รหัสผ่าน:** เก็บแบบ hash (PBKDF2-SHA256 100,000 รอบ + salt) ระบบไม่รู้รหัสจริงของใคร
+- **รหัสชั่วคราว:** ผู้ใช้ใหม่หรือคนที่ถูกรีเซ็ตรหัส ต้องตั้งรหัสของตัวเองก่อนใช้งาน
+- **กฎรหัสผ่าน:** อย่างน้อย 8 ตัว และต้องมีทั้งตัวอักษรและตัวเลข
+- **ล็อกบัญชี:** ใส่รหัสผิด 5 ครั้งติดกัน บัญชีถูกล็อก 15 นาที ผู้ดูแลปลดล็อกได้
+- **Session:** เก็บใน cookie แบบ HttpOnly / Secure / SameSite=Strict มีอายุ 12 ชั่วโมง ฐานข้อมูลเก็บเฉพาะ hash ของโทเคน
+- **ออกจากระบบทุกเครื่องอัตโนมัติ** เมื่อเปลี่ยนรหัส ถูกรีเซ็ตรหัส หรือถูกระงับบัญชี
 
 ### การป้องกันข้อมูล
 
-- **ห้ามลบถาวร:** ฐานข้อมูลมี trigger ปฏิเสธคำสั่ง DELETE ทุกตาราง การลบในระบบคือการ "ซ่อน" ซึ่งกู้คืนได้
-- **ประวัติแก้ไขไม่ได้:** `audit_log` แก้หรือลบไม่ได้ และถูกบันทึกโดย trigger ในฐานข้อมูลเอง ไม่ขึ้นกับโค้ดหน้าเว็บ
-- **กันบันทึกทับกัน:** ถ้าคนสองคนเปิดแก้รายการเดียวกัน คนที่บันทึกทีหลังจะได้รับแจ้งให้โหลดข้อมูลใหม่ก่อน ข้อมูลของคนแรกจะไม่ถูกเขียนทับ
+- **ห้ามลบถาวร:** ฐานข้อมูลมี trigger ปฏิเสธคำสั่ง DELETE การลบในระบบคือการ "ซ่อน" ซึ่งกู้คืนได้
+- **ประวัติแก้ไขไม่ได้:** `audit_log` แก้หรือลบไม่ได้ บันทึกว่าใครแก้ช่องไหน เมื่อไร จากค่าอะไรเป็นอะไร
+- **กันบันทึกทับกัน:** ถ้าสองคนแก้รายการเดียวกัน คนที่บันทึกทีหลังจะได้รับแจ้งให้โหลดข้อมูลใหม่ก่อน
 - **ตรวจค่าก่อนบันทึก:** พิกัดต้องอยู่ในประเทศไทย, ค่าต่ำสุดต้องไม่เกินค่าสูงสุด, รหัสทะเบียนต้องเป็นรูปแบบ `รย.ถ.2-0000` และห้ามซ้ำ
-- **ปลอมตัวตนไม่ได้:** API ตรวจลายเซ็น JWT ของ Cloudflare Access ทุกครั้ง ถ้ายังไม่ได้ตั้งค่า Access ระบบจะปฏิเสธทุกคำขอ
-- **ประหยัดโควตา D1:** ใช้ ETag ถ้าข้อมูลไม่เปลี่ยน เซิร์ฟเวอร์จะอ่านแค่ 1 แถวแทนการอ่านทั้งตาราง
+- **ประหยัดโควตา D1:** ใช้ ETag ถ้าข้อมูลไม่เปลี่ยน เซิร์ฟเวอร์จะอ่านแค่ 1 แถว
 
 ---
 
-## ติดตั้งครั้งแรก
+## สถานะการติดตั้ง
 
-ต้องมี Node.js 20 ขึ้นไป และบัญชี Cloudflare
+- ฐานข้อมูล D1 `roadsdata-db` สร้างแล้ว (`database_id` อยู่ใน `wrangler.jsonc`) และรัน migration 0001–0002 แล้ว
+- มีบัญชี `admin` ที่ใช้รหัสชั่วคราว ต้องเปลี่ยนรหัสตอนเข้าครั้งแรก
+- ข้อมูลถนน/สะพาน/สวน **ยังไม่นำเข้า:** ผู้ดูแลเข้าระบบครั้งแรกแล้วกดปุ่ม **"นำเข้าข้อมูลตั้งต้น"** ที่หน้าภาพรวม (ทำได้ครั้งเดียวตอนฐานข้อมูลว่าง)
+- Deploy อัตโนมัติด้วย **Workers Builds** ทุกครั้งที่ push เข้า `main`
+
+## Deploy เอง (ถ้าไม่ใช้ Workers Builds)
 
 ```bash
 npm install
 npx wrangler login
-```
-
-### 1. สร้างฐานข้อมูล D1
-
-```bash
-npx wrangler d1 create roadsdata-db
-```
-
-นำค่า `database_id` ที่ได้ ไปใส่ใน `wrangler.jsonc` แทน `00000000-0000-0000-0000-000000000000`
-
-### 2. สร้างตารางและนำเข้าข้อมูลจาก Excel
-
-```bash
-npm run db:migrate     # สร้างตาราง index และ trigger
-npm run db:seed        # นำเข้าถนน 649 สาย สะพาน 25 แห่ง สวน 4 แห่ง
-```
-
-> รัน `db:seed` **ครั้งเดียวเท่านั้น** ถ้ารันซ้ำ ข้อมูลจะเพิ่มซ้ำ
-
-### 3. ตั้งผู้ดูแลคนแรก
-
-แก้ `ADMIN_EMAILS` ใน `wrangler.jsonc` ใส่อีเมลของตัวเอง (หลายคนคั่นด้วย `,`) แล้ว deploy
-
-```bash
+npm run db:migrate     # รัน migration ที่ยังไม่ได้รัน
 npm run deploy
 ```
 
-จะได้ URL `https://roadsdata.rayongcity.workers.dev` (subdomain `rayongcity` เดียวกับระบบ WRS)
+## ลืมรหัส admin ทุกคน
 
-ถ้าเปิดตอนนี้จะเจอข้อความ "ยังไม่ได้ตั้งค่า Cloudflare Access" ซึ่งเป็นเรื่องปกติ ระบบล็อกไว้จนกว่าจะทำขั้นที่ 4
-
-### 4. ตั้งค่า Cloudflare Access (ระบบเข้าสู่ระบบ)
-
-Cloudflare Zero Trust ใช้ฟรีได้สำหรับทีมขนาดเล็ก
-
-1. เข้า Cloudflare Dashboard ไปที่ **Zero Trust**
-   - ถ้าเข้าครั้งแรก ระบบให้ตั้งชื่อทีม เช่น `rayongcity` จะได้โดเมนทีม `rayongcity.cloudflareaccess.com`
-2. ไปที่ **Settings → Authentication → Login methods**
-   - เปิด **One-time PIN** (ระบบส่งรหัส 6 หลักเข้าอีเมล ไม่ต้องตั้งรหัสผ่าน)
-3. ไปที่ **Access → Applications → Add an application → Self-hosted**
-   - **Application domain:** `roadsdata.rayongcity.workers.dev` (หรือโดเมนของเทศบาล ถ้าผูกไว้)
-   - **Policy:** Action = Allow, Include = Emails (ใส่อีเมลที่อนุญาตทีละคน) หรือ Emails ending in `@rayongcity.go.th`
-4. เมื่อบันทึกแล้ว ให้คัดลอก **Application Audience (AUD) Tag** จากหน้า Overview ของแอป
-5. ใส่ค่าใน `wrangler.jsonc` แล้วรัน `npm run deploy` อีกครั้ง
-
-```jsonc
-"ACCESS_TEAM_DOMAIN": "rayongcity.cloudflareaccess.com",
-"ACCESS_AUD": "ค่า AUD tag ที่คัดลอกมา",
+```bash
+node scripts/create-user.mjs admin <รหัสชั่วคราวใหม่> admin "ผู้ดูแลระบบ"
+# นำ SQL ที่ได้ไปรัน:
+npx wrangler d1 execute roadsdata-db --remote --command "<SQL ที่ได้>"
 ```
-
-### 5. เพิ่มผู้ใช้
-
-1. เข้าเว็บด้วยอีเมลผู้ดูแล แล้วไปที่แท็บ **ผู้ใช้**
-2. เพิ่มอีเมลเจ้าหน้าที่และกำหนดบทบาท
-3. อีเมลที่จะเพิ่ม ต้องได้รับอนุญาตใน Policy ของ Access ด้วย
-
----
 
 ## พัฒนาในเครื่อง
 
 ```bash
-cp .dev.vars.example .dev.vars     # จำลองผู้ใช้ dev@rayongcity.go.th เป็นผู้ดูแล
+npm install
 npm run db:migrate:local
-npm run db:seed:local
-npm run dev                        # เปิด http://localhost:8787
+npx wrangler d1 execute roadsdata-db --local --command "$(node scripts/create-user.mjs admin Temp1234 admin)"
+npm run dev            # เปิด http://localhost:8787 แล้วเข้าระบบด้วย admin / Temp1234
 ```
-
-`DEV_USER_EMAIL` ใน `.dev.vars` ใช้ข้าม Access เฉพาะตอนรันในเครื่องเท่านั้น **ห้ามตั้งค่านี้บน Cloudflare**
 
 ---
 
@@ -160,8 +124,8 @@ python3 scripts/build_from_excel.py <ไฟล์.xlsx> seed
 ```
 src/index.js               API + ตรวจสิทธิ์ (Worker)
 public/                    หน้าเว็บ (index.html, app.js, style.css, vendor/ Leaflet + SheetJS)
-migrations/0001_init.sql   ตาราง, index, trigger (สร้างจาก scripts/gen_schema.py)
-seed/seed.sql              ข้อมูลตั้งต้นจาก Excel
+migrations/                ตาราง, index, trigger (0001 สร้างจาก scripts/gen_schema.py, 0002 ระบบผู้ใช้)
+seed/seed.json, seed.sql    ข้อมูลตั้งต้นจาก Excel (ปุ่มนำเข้าในระบบใช้ seed.json)
 seed/data_issues.csv       รายการที่ควรตรวจ
 scripts/                   สคริปต์แปลง Excel และสร้าง schema
 ```
@@ -178,14 +142,14 @@ scripts/                   สคริปต์แปลง Excel และส�
 
 ## API
 
-| Method | Path | สิทธิ์ขั้นต่ำ |
+| Method | Path | สิทธิ์ |
 |---|---|---|
-| GET | `/api/me`, `/api/communities`, `/api/{roads\|bridges\|parks}`, `/api/{table}/{id}` | ดูอย่างเดียว |
-| POST | `/api/{table}` | แก้ไขได้ |
-| PUT | `/api/{table}/{id}` (ต้องส่ง `updated_at` เดิมมาด้วย) | แก้ไขได้ |
-| GET | `/api/history?table=&id=` | แก้ไขได้ |
-| DELETE | `/api/{table}/{id}` (ซ่อน) | ผู้ดูแล |
-| POST | `/api/{table}/{id}/restore` | ผู้ดูแล |
-| GET | `/api/history` | ผู้ดูแล |
-| GET / PUT | `/api/users`, `/api/users/{email}` | ผู้ดูแล |
-| POST | `/api/communities` | ผู้ดูแล |
+| POST | `/api/auth/login`, `/api/auth/logout`, `/api/auth/password` | – |
+| GET | `/api/me`, `/api/communities`, `/api/{roads\|bridges\|parks}`, `/api/{table}/{id}` | user |
+| POST / PUT | `/api/{table}`, `/api/{table}/{id}` (PUT ต้องส่ง `updated_at` เดิมมาด้วย) | user |
+| GET | `/api/history?table=&id=` | user |
+| DELETE / POST | `/api/{table}/{id}` (ซ่อน), `/api/{table}/{id}/restore` | admin |
+| GET | `/api/history` | admin |
+| GET / POST / PUT | `/api/users`, `/api/users/{username}` | admin |
+| GET / POST | `/api/admin/seed` (นำเข้าข้อมูลตั้งต้นครั้งเดียว) | admin |
+| POST | `/api/communities` | admin |

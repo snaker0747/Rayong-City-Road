@@ -1,7 +1,10 @@
 // RCRNIS – ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง — Cloudflare Worker (API) + Static Assets (หน้าเว็บ)
 // ฝ่ายสาธารณูปโภค ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง
 
+import SEED from '../seed/seed.json';
+
 const R = 'REAL', I = 'INTEGER', T = 'TEXT';
+const SEED_USER = 'นำเข้าจาก Excel';
 
 // คอลัมน์ที่อนุญาตให้แก้ไขผ่าน API (ต้องตรงกับ scripts/gen_schema.py)
 const TABLES = {
@@ -20,7 +23,7 @@ const TABLES = {
   parks: { seq: I, name: T, lat: R, lng: R, area_sqm: R, note: T },
 };
 
-const ROLE_LEVEL = { viewer: 1, editor: 2, admin: 3 };
+const ROLE_LEVEL = { user: 2, admin: 3 };
 const REG_CODE_RE = /^รย\.ถ\.\d-\d{4}$/;
 
 class HttpError extends Error {
@@ -38,66 +41,135 @@ const json = (data, status = 200, headers = {}) =>
     },
   });
 
-// ---------------------------------------------------------------- auth
-let certCache = { at: 0, keys: null };
+// ---------------------------------------------------------------- auth (ชื่อผู้ใช้ + รหัสผ่าน)
+const SESSION_COOKIE = 'rcrnis_session';
+const SESSION_HOURS = 12;
+const MAX_FAILS = 5;          // ใส่รหัสผิดเกินนี้ ล็อกบัญชีชั่วคราว
+const LOCK_MINUTES = 15;
+const PBKDF2_ITER = 100000;   // ค่าสูงสุดที่ Workers รองรับ
 
-function b64urlToBytes(s) {
+const enc = new TextEncoder();
+const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const fromB64u = (s) => {
   s = s.replace(/-/g, '+').replace(/_/g, '/');
   while (s.length % 4) s += '=';
-  const bin = atob(s);
-  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  return Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+};
+const sha256 = async (text) => b64u(await crypto.subtle.digest('SHA-256', enc.encode(text)));
+
+async function pbkdf2(password, salt, iter) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, key, 256));
 }
 
-async function accessKeys(team) {
-  if (certCache.keys && Date.now() - certCache.at < 3600_000) return certCache.keys;
-  const res = await fetch(`https://${team}/cdn-cgi/access/certs`);
-  if (!res.ok) throw new HttpError(503, 'ดึงกุญแจ Cloudflare Access ไม่สำเร็จ');
-  const { keys } = await res.json();
-  certCache = { at: Date.now(), keys };
-  return keys;
+export async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  return `pbkdf2$${PBKDF2_ITER}$${b64u(salt)}$${b64u(await pbkdf2(password, salt, PBKDF2_ITER))}`;
 }
 
-// ตรวจ JWT ที่ Cloudflare Access แนบมา (ป้องกันการปลอม header อีเมล)
-async function verifyAccessJwt(token, env) {
-  const [h, p, s] = token.split('.');
-  let header, payload;
-  try {
-    header = JSON.parse(new TextDecoder().decode(b64urlToBytes(h)));
-    payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(p)));
-  } catch {
-    throw new HttpError(401, 'โทเคนไม่ถูกต้อง');
-  }
-  if (!s) throw new HttpError(401, 'โทเคนไม่ถูกต้อง');
-  const jwk = (await accessKeys(env.ACCESS_TEAM_DOMAIN)).find((k) => k.kid === header.kid);
-  if (!jwk) throw new HttpError(401, 'ไม่พบกุญแจของโทเคน');
-  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
-  const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64urlToBytes(s), new TextEncoder().encode(`${h}.${p}`));
-  if (!ok) throw new HttpError(401, 'ลายเซ็นโทเคนไม่ถูกต้อง');
-  const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (!aud.includes(env.ACCESS_AUD)) throw new HttpError(401, 'โทเคนไม่ใช่ของแอปนี้');
-  if (payload.exp && payload.exp * 1000 < Date.now()) throw new HttpError(401, 'โทเคนหมดอายุ');
-  if (!payload.email) throw new HttpError(401, 'โทเคนไม่มีอีเมล');
-  return payload.email.toLowerCase();
+function sameBytes(a, b) {
+  if (a.length !== b.length) return false;
+  if (crypto.subtle.timingSafeEqual) return crypto.subtle.timingSafeEqual(a, b);
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  return d === 0;
 }
+
+async function verifyPassword(password, stored) {
+  const [alg, iter, salt, hash] = String(stored || '').split('$');
+  if (alg !== 'pbkdf2') return false;
+  return sameBytes(await pbkdf2(password, fromB64u(salt), Number(iter)), fromB64u(hash));
+}
+
+// ใช้เปรียบเทียบตอนไม่พบผู้ใช้ เพื่อให้เวลาตอบใกล้เคียงกัน (เดาไม่ได้ว่าชื่อผู้ใช้มีจริงไหม)
+const DUMMY_HASH = 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
+function checkPasswordPolicy(pw) {
+  if (typeof pw !== 'string' || pw.length < 8) throw new HttpError(400, 'รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร');
+  if (pw.length > 128) throw new HttpError(400, 'รหัสผ่านยาวเกินไป');
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) throw new HttpError(400, 'รหัสผ่านต้องมีทั้งตัวอักษรและตัวเลข');
+}
+
+function normUsername(u) {
+  const s = String(u || '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,32}$/.test(s)) throw new HttpError(400, 'ชื่อผู้ใช้ต้องเป็น a-z, 0-9, . _ - ยาว 3–32 ตัว');
+  return s;
+}
+
+function readCookie(request, name) {
+  const m = (request.headers.get('cookie') || '').match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return m ? m[1] : null;
+}
+
+const sessionCookie = (token, url, maxAge) =>
+  `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${url.protocol === 'https:' ? '; Secure' : ''}`;
 
 async function getUser(request, env) {
-  let email;
-  if (env.DEV_USER_EMAIL) {
-    email = env.DEV_USER_EMAIL.toLowerCase(); // ใช้เฉพาะตอนพัฒนาในเครื่อง (.dev.vars)
-  } else {
-    if (!env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) {
-      throw new HttpError(500, 'ยังไม่ได้ตั้งค่า Cloudflare Access (ACCESS_TEAM_DOMAIN / ACCESS_AUD)');
+  const token = readCookie(request, SESSION_COOKIE);
+  if (!token) return null;
+  const row = await env.DB.prepare(
+    `SELECT u.username, u.display_name, u.role, u.active, u.must_change_pw
+       FROM sessions s JOIN users u ON u.username = s.username
+      WHERE s.token_hash = ? AND s.expires_at > ?`,
+  ).bind(await sha256(token), nowIso()).first();
+  if (!row || !row.active) return null;
+  return { username: row.username, email: row.username, role: row.role, name: row.display_name || row.username, must_change_pw: !!row.must_change_pw, token };
+}
+
+async function handleAuth(request, env, url, action, user) {
+  if (action === 'login' && request.method === 'POST') {
+    const body = await readJson(request);
+    const username = String(body.username || '').trim().toLowerCase();
+    const password = String(body.password || '');
+    const u = username ? await env.DB.prepare('SELECT * FROM users WHERE username = ?').bind(username).first() : null;
+    const ok = await verifyPassword(password, u?.password_hash || DUMMY_HASH);
+    if (u?.locked_until && u.locked_until > nowIso()) {
+      throw new HttpError(429, `บัญชีถูกล็อกชั่วคราวเพราะใส่รหัสผิดหลายครั้ง ลองใหม่หลัง ${new Date(u.locked_until).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' })} น.`);
     }
-    const token = request.headers.get('cf-access-jwt-assertion');
-    if (!token) throw new HttpError(401, 'กรุณาเข้าสู่ระบบผ่าน Cloudflare Access');
-    email = await verifyAccessJwt(token, env);
+    if (!u || !ok) {
+      if (u) {
+        const fails = u.failed_count + 1;
+        const lock = fails >= MAX_FAILS ? new Date(Date.now() + LOCK_MINUTES * 60000).toISOString() : null;
+        await env.DB.prepare('UPDATE users SET failed_count = ?, locked_until = ? WHERE username = ?').bind(lock ? 0 : fails, lock, u.username).run();
+      }
+      throw new HttpError(401, 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+    }
+    if (!u.active) throw new HttpError(403, 'บัญชีนี้ถูกระงับการใช้งาน ติดต่อผู้ดูแลระบบ');
+    const token = b64u(crypto.getRandomValues(new Uint8Array(32)));
+    const now = nowIso();
+    const exp = new Date(Date.now() + SESSION_HOURS * 3600000).toISOString();
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now),
+      env.DB.prepare('INSERT INTO sessions (token_hash, username, created_at, expires_at, user_agent) VALUES (?, ?, ?, ?, ?)')
+        .bind(await sha256(token), u.username, now, exp, (request.headers.get('user-agent') || '').slice(0, 200)),
+      env.DB.prepare('UPDATE users SET failed_count = 0, locked_until = NULL, last_login_at = ? WHERE username = ?').bind(now, u.username),
+    ]);
+    return json({ username: u.username, role: u.role, name: u.display_name || u.username, must_change_pw: !!u.must_change_pw }, 200,
+      { 'set-cookie': sessionCookie(token, url, SESSION_HOURS * 3600) });
   }
-  const admins = (env.ADMIN_EMAILS || '').toLowerCase().split(',').map((x) => x.trim()).filter(Boolean);
-  const row = await env.DB.prepare('SELECT display_name, role, active FROM users WHERE email = ?').bind(email).first();
-  if (row && !row.active && !admins.includes(email)) throw new HttpError(403, 'บัญชีนี้ถูกระงับการใช้งาน');
-  let role = row?.role || env.DEFAULT_ROLE || 'viewer';
-  if (admins.includes(email)) role = 'admin';
-  return { email, role, name: row?.display_name || email };
+
+  if (action === 'logout' && request.method === 'POST') {
+    if (user) await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(await sha256(user.token)).run();
+    return json({ ok: true }, 200, { 'set-cookie': sessionCookie('', url, 0) });
+  }
+
+  if (action === 'password' && request.method === 'POST') {
+    if (!user) throw new HttpError(401, 'กรุณาเข้าสู่ระบบ');
+    const body = await readJson(request);
+    const u = await env.DB.prepare('SELECT password_hash FROM users WHERE username = ?').bind(user.username).first();
+    if (!(await verifyPassword(String(body.current || ''), u.password_hash))) throw new HttpError(400, 'รหัสผ่านปัจจุบันไม่ถูกต้อง');
+    checkPasswordPolicy(body.new);
+    if (body.new === body.current) throw new HttpError(400, 'รหัสผ่านใหม่ต้องไม่ซ้ำรหัสเดิม');
+    const keep = await sha256(user.token);
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET password_hash = ?, must_change_pw = 0, updated_by = ? WHERE username = ?')
+        .bind(await hashPassword(body.new), user.username, user.username),
+      // ออกจากระบบทุกเครื่องยกเว้นเครื่องนี้
+      env.DB.prepare('DELETE FROM sessions WHERE username = ? AND token_hash <> ?').bind(user.username, keep),
+    ]);
+    return json({ ok: true });
+  }
+  throw new HttpError(404, 'ไม่พบ API นี้');
 }
 
 function need(user, role) {
@@ -174,7 +246,14 @@ async function handleApi(request, env, url) {
 
   const [res, id, sub] = parts;
 
-  if (res === 'me' && method === 'GET') return json(user);
+  if (res === 'auth') return handleAuth(request, env, url, id, user);
+  if (!user) throw new HttpError(401, 'กรุณาเข้าสู่ระบบ');
+  if (res === 'me' && method === 'GET') {
+    const { token, ...me } = user;
+    return json(me);
+  }
+  // ผู้ที่ได้รหัสชั่วคราว ต้องตั้งรหัสใหม่ก่อนใช้งาน
+  if (user.must_change_pw) throw new HttpError(403, 'กรุณาเปลี่ยนรหัสผ่านก่อนใช้งาน');
 
   if (res === 'version' && method === 'GET') return json({ version: await dataVersion(env) });
 
@@ -210,10 +289,10 @@ async function handleApi(request, env, url) {
     }
 
     if (!id && method === 'POST') {
-      need(user, 'editor');
+      need(user, 'user');
       const rec = cleanRecord(table, await readJson(request), { partial: false });
       if (rec.reg_code && user.role !== 'admin') throw new HttpError(403, 'กำหนดรหัสทะเบียนทางได้เฉพาะผู้ดูแล');
-      rec.updated_by = user.email;
+      rec.updated_by = user.username;
       rec.created_at = rec.updated_at = nowIso();
       if (rec.seq == null) {
         const r = await env.DB.prepare(`SELECT COALESCE(MAX(seq),0)+1 AS n FROM ${table}`).first();
@@ -237,7 +316,7 @@ async function handleApi(request, env, url) {
       if (method === 'GET') return json(current);
 
       if (method === 'PUT') {
-        need(user, 'editor');
+        need(user, 'user');
         const body = await readJson(request);
         if (!body.updated_at) throw new HttpError(400, 'ต้องส่ง updated_at ของข้อมูลที่เปิดแก้ไข');
         if (body.updated_at !== current.updated_at) {
@@ -253,7 +332,7 @@ async function handleApi(request, env, url) {
         try {
           const row = await env.DB.prepare(
             `UPDATE ${table} SET ${sets}, updated_at = ?, updated_by = ? WHERE id = ? AND updated_at = ? RETURNING *`,
-          ).bind(...changed.map((k) => rec[k]), nowIso(), user.email, rid, current.updated_at).first();
+          ).bind(...changed.map((k) => rec[k]), nowIso(), user.username, rid, current.updated_at).first();
           if (!row) return json({ error: 'ข้อมูลนี้ถูกแก้ไขพร้อมกัน กรุณาโหลดใหม่' }, 409);
           return json(row);
         } catch (e) { throw mapConstraintError(e); }
@@ -263,7 +342,7 @@ async function handleApi(request, env, url) {
         need(user, 'admin');
         const row = await env.DB.prepare(
           `UPDATE ${table} SET is_deleted = 1, updated_at = ?, updated_by = ? WHERE id = ? RETURNING *`,
-        ).bind(nowIso(), user.email, rid).first();
+        ).bind(nowIso(), user.username, rid).first();
         return json(row);
       }
     }
@@ -273,15 +352,49 @@ async function handleApi(request, env, url) {
       try {
         const row = await env.DB.prepare(
           `UPDATE ${table} SET is_deleted = 0, updated_at = ?, updated_by = ? WHERE id = ? RETURNING *`,
-        ).bind(nowIso(), user.email, Number(id)).first();
+        ).bind(nowIso(), user.username, Number(id)).first();
         if (!row) throw new HttpError(404, 'ไม่พบรายการ');
         return json(row);
       } catch (e) { throw mapConstraintError(e); }
     }
   }
 
+  // นำเข้าข้อมูลตั้งต้นจาก Excel (seed/seed.json) — ทำได้ครั้งเดียวตอนฐานข้อมูลยังว่าง
+  if (res === 'admin' && id === 'seed') {
+    need(user, 'admin');
+    const counts = await env.DB.prepare(
+      'SELECT (SELECT COUNT(*) FROM communities) c, (SELECT COUNT(*) FROM roads) r, (SELECT COUNT(*) FROM bridges) b, (SELECT COUNT(*) FROM parks) p',
+    ).first();
+    const empty = !counts.c && !counts.r && !counts.b && !counts.p;
+    if (method === 'GET') {
+      return json({ empty, counts, seed: { communities: SEED.communities.length, roads: SEED.roads.length, bridges: SEED.bridges.length, parks: SEED.parks.length } });
+    }
+    if (method === 'POST') {
+      if (!empty) throw new HttpError(409, 'ฐานข้อมูลมีข้อมูลอยู่แล้ว นำเข้าซ้ำไม่ได้');
+      const stmts = [];
+      const ins = (table, rows, extra = {}) => {
+        for (const row of rows) {
+          const rec = { ...row, ...extra };
+          const keys = Object.keys(rec);
+          stmts.push(env.DB.prepare(`INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`)
+            .bind(...keys.map((k) => rec[k])));
+        }
+      };
+      ins('communities', SEED.communities);
+      ins('roads', SEED.roads, { updated_by: SEED_USER });
+      ins('bridges', SEED.bridges, { updated_by: SEED_USER });
+      ins('parks', SEED.parks, { updated_by: SEED_USER });
+      stmts.push(env.DB.prepare(
+        "INSERT INTO audit_log (table_name, record_id, action, changed_by, new_json) VALUES ('system', 'seed', 'import', ?, ?)",
+      ).bind(user.username, JSON.stringify({ roads: SEED.roads.length, bridges: SEED.bridges.length, parks: SEED.parks.length })));
+      // batch เดียว = transaction เดียว ถ้าพลาดจะไม่มีข้อมูลค้างครึ่งๆ กลางๆ
+      await env.DB.batch(stmts);
+      return json({ ok: true, imported: { communities: SEED.communities.length, roads: SEED.roads.length, bridges: SEED.bridges.length, parks: SEED.parks.length } });
+    }
+  }
+
   if (res === 'history' && method === 'GET') {
-    need(user, 'editor');
+    need(user, 'user');
     const table = url.searchParams.get('table');
     const rid = url.searchParams.get('id');
     const limit = Math.min(Number(url.searchParams.get('limit')) || 100, 500);
@@ -298,25 +411,52 @@ async function handleApi(request, env, url) {
 
   if (res === 'users') {
     need(user, 'admin');
+    const cols = 'username, display_name, role, active, must_change_pw, locked_until, last_login_at, created_at, updated_by';
     if (method === 'GET' && !id) {
-      const { results } = await env.DB.prepare('SELECT * FROM users ORDER BY role DESC, email').all();
+      const { results } = await env.DB.prepare(`SELECT ${cols} FROM users ORDER BY role, username`).all();
       return json(results);
     }
-    if (method === 'PUT' && id) {
-      const email = id.toLowerCase().trim();
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new HttpError(400, 'อีเมลไม่ถูกต้อง');
-      const body = await readJson(request);
-      const role = body.role || 'viewer';
-      if (!ROLE_LEVEL[role]) throw new HttpError(400, 'บทบาทไม่ถูกต้อง');
-      const active = body.active === false || body.active === 0 ? 0 : 1;
-      if (email === user.email && (role !== 'admin' || !active)) throw new HttpError(400, 'ลดสิทธิ์หรือระงับบัญชีตัวเองไม่ได้');
+    const body = method === 'GET' ? {} : await readJson(request);
+    if ('role' in body && !ROLE_LEVEL[body.role]) throw new HttpError(400, 'บทบาทไม่ถูกต้อง');
+    const role = body.role || 'user';
+    const active = body.active === false || body.active === 0 || body.active === '0' ? 0 : 1;
+    const display = body.display_name ? String(body.display_name).trim().slice(0, 100) : null;
+
+    if (method === 'POST' && !id) {
+      const username = normUsername(body.username);
+      checkPasswordPolicy(body.password);
+      const exists = await env.DB.prepare('SELECT 1 FROM users WHERE username = ?').bind(username).first();
+      if (exists) throw new HttpError(409, 'มีชื่อผู้ใช้นี้แล้ว');
       const row = await env.DB.prepare(
-        `INSERT INTO users (email, display_name, role, active, updated_by) VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(email) DO UPDATE SET display_name = excluded.display_name, role = excluded.role,
-           active = excluded.active, updated_by = excluded.updated_by
-         RETURNING *`,
-      ).bind(email, body.display_name || null, role, active, user.email).first();
-      return json(row);
+        `INSERT INTO users (username, display_name, password_hash, role, active, must_change_pw, updated_by)
+         VALUES (?, ?, ?, ?, ?, 1, ?) RETURNING ${cols}`,
+      ).bind(username, display, await hashPassword(body.password), role, active, user.username).first();
+      return json(row, 201);
+    }
+
+    if (method === 'PUT' && id) {
+      const username = normUsername(id);
+      const cur = await env.DB.prepare('SELECT username, role, active, display_name FROM users WHERE username = ?').bind(username).first();
+      if (!cur) throw new HttpError(404, 'ไม่พบผู้ใช้');
+      // ช่องที่ไม่ได้ส่งมา ให้คงค่าเดิม
+      const nRole = 'role' in body ? role : cur.role;
+      const nActive = 'active' in body ? active : cur.active;
+      const nDisplay = 'display_name' in body ? display : cur.display_name;
+      if (username === user.username && (nRole !== 'admin' || !nActive)) throw new HttpError(400, 'ลดสิทธิ์หรือระงับบัญชีตัวเองไม่ได้');
+      const stmts = [];
+      if (body.password) {
+        checkPasswordPolicy(body.password);
+        // รีเซ็ตรหัส: ผู้ใช้ต้องเปลี่ยนเองตอนเข้าครั้งถัดไป และถูกออกจากระบบทุกเครื่อง
+        stmts.push(env.DB.prepare('UPDATE users SET password_hash = ?, must_change_pw = 1, failed_count = 0, locked_until = NULL, updated_by = ? WHERE username = ?')
+          .bind(await hashPassword(body.password), user.username, username));
+        stmts.push(env.DB.prepare('DELETE FROM sessions WHERE username = ?').bind(username));
+      }
+      stmts.push(env.DB.prepare('UPDATE users SET display_name = ?, role = ?, active = ?, updated_by = ? WHERE username = ?')
+        .bind(nDisplay, nRole, nActive, user.username, username));
+      if (!nActive) stmts.push(env.DB.prepare('DELETE FROM sessions WHERE username = ?').bind(username));
+      if (body.unlock) stmts.push(env.DB.prepare('UPDATE users SET failed_count = 0, locked_until = NULL WHERE username = ?').bind(username));
+      await env.DB.batch(stmts);
+      return json(await env.DB.prepare(`SELECT ${cols} FROM users WHERE username = ?`).bind(username).first());
     }
   }
 

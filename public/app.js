@@ -97,6 +97,7 @@ const FORMS = {
 
 // ป้ายชื่อทุกคอลัมน์ (ใช้ในหน้าประวัติและส่งออก)
 const LABELS = {
+  password: 'รหัสผ่าน',
   community_id: 'ชุมชน', seq: 'ลำดับ', reg_code: 'รหัสทะเบียนทาง', name: 'ชื่อ', lat: 'ละติจูด', lng: 'ลองจิจูด',
   row_w_min: 'เขตทาง ต่ำสุด', row_w_max: 'เขตทาง สูงสุด', length_km: 'ระยะทาง (กม.)', land_type: 'ประเภทที่ดิน',
   surface: 'ผิวจราจร', surf_w_min: 'ผิวจราจรกว้าง ต่ำสุด', surf_w_max: 'ผิวจราจรกว้าง สูงสุด',
@@ -109,9 +110,9 @@ const LABELS = {
   width_m: 'กว้าง (ม.)', length_m: 'ยาว (ม.)', height_m: 'สูง (ม.)', walk_l_m: 'ทางเท้า ซ้าย', walk_r_m: 'ทางเท้า ขวา',
   bridge_type: 'ประเภท', area_sqm: 'พื้นที่ (ตร.ม.)', role: 'บทบาท', active: 'ใช้งาน', display_name: 'ชื่อ',
 };
-const ROLE_TH = { viewer: 'ดูอย่างเดียว', editor: 'แก้ไขได้', admin: 'ผู้ดูแล' };
-const ACTION_TH = { create: 'เพิ่ม', update: 'แก้ไข', delete: 'ซ่อน', restore: 'กู้คืน' };
-const TABLE_TH = { roads: 'ถนน', bridges: 'สะพาน', parks: 'สวนสาธารณะ', users: 'ผู้ใช้' };
+const ROLE_TH = { user: 'ผู้ใช้งาน', admin: 'ผู้ดูแลระบบ' };
+const ACTION_TH = { create: 'เพิ่ม', update: 'แก้ไข', delete: 'ซ่อน', restore: 'กู้คืน', import: 'นำเข้าข้อมูลตั้งต้นจาก Excel' };
+const TABLE_TH = { roads: 'ถนน', bridges: 'สะพาน', parks: 'สวนสาธารณะ', users: 'ผู้ใช้', system: 'ระบบ' };
 
 // ---------------------------------------------------------------- state & helpers
 const S = {
@@ -125,7 +126,7 @@ const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const fmt = (n, d = 2) => (n == null || n === '' ? '' : Number(n).toLocaleString('th-TH', { maximumFractionDigits: d }));
 const fmtRange = (a, b) => (a == null && b == null ? '' : a === b || b == null ? fmt(a) : a == null ? fmt(b) : `${fmt(a)}–${fmt(b)}`);
 const isAdmin = () => S.me?.role === 'admin';
-const canEdit = () => S.me && S.me.role !== 'viewer';
+const canEdit = () => !!S.me;
 const commName = (id) => S.communities.find((c) => c.id === id)?.name || '';
 const fmtTime = (s) => {
   if (!s) return '';
@@ -146,6 +147,10 @@ async function api(path, opts = {}) {
   const res = await fetch('/api/' + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
   if (res.status === 304) return { notModified: true };
   const data = res.headers.get('content-type')?.includes('json') ? await res.json() : null;
+  if (res.status === 401 && !path.startsWith('auth/') && S.me) {
+    S.me = null;
+    showLogin('หมดเวลาการใช้งาน กรุณาเข้าสู่ระบบอีกครั้ง');
+  }
   if (!res.ok) {
     const err = new Error(data?.error || `เกิดข้อผิดพลาด (${res.status})`);
     err.status = res.status;
@@ -221,6 +226,28 @@ function renderDashboard() {
   ].map(([label, f]) => ({ label, pct: R.length ? (R.filter(f).length / R.length) * 100 : 0 }));
 
   const pct = R.length ? (reg / R.length) * 100 : 0;
+  if (isAdmin() && !S.roads.length && !S.communities.length) {
+    el.innerHTML = `<div class="card" style="max-width:640px;margin:40px auto;text-align:center">
+      <h2>ฐานข้อมูลยังว่าง</h2>
+      <p class="muted">กดปุ่มด้านล่างเพื่อนำเข้าข้อมูลตั้งต้นจากไฟล์ Excel ทะเบียนถนน (ทำได้ครั้งเดียว)</p>
+      <p id="seed-info" class="small muted"></p>
+      <button class="primary" id="btn-seed">นำเข้าข้อมูลตั้งต้น</button></div>`;
+    api('admin/seed').then(({ data }) => {
+      $('#seed-info').textContent = `ถนน ${data.seed.roads} สาย · ${data.seed.communities} ชุมชน · สะพาน ${data.seed.bridges} แห่ง · สวน ${data.seed.parks} แห่ง`;
+    }).catch(() => {});
+    $('#btn-seed').addEventListener('click', async (e) => {
+      if (!confirm('ยืนยันนำเข้าข้อมูลตั้งต้นจาก Excel?')) return;
+      e.target.disabled = true; e.target.textContent = 'กำลังนำเข้า…';
+      try {
+        const { data } = await api('admin/seed', { method: 'POST', body: {} });
+        S.communities = (await api('communities')).data;
+        await refreshAll();
+        toast(`นำเข้าแล้ว ถนน ${data.imported.roads} สาย`);
+        route();
+      } catch (err) { toast(err.message, true); e.target.disabled = false; e.target.textContent = 'นำเข้าข้อมูลตั้งต้น'; }
+    });
+    return;
+  }
   el.innerHTML = `
     <div class="page-head"><div><h2>ภาพรวมข้อมูลถนน สะพาน และสวนสาธารณะ</h2>
       <div class="muted small">ตัวเลขทั้งหมดคำนวณจากข้อมูลจริงในระบบ อัปเดตทันทีเมื่อมีการแก้ไข</div></div>
@@ -614,6 +641,7 @@ function diffList(h) {
   const show = (k, v) => (v == null || v === '' ? '(ว่าง)' : k === 'community_id' ? commName(v) || v : k === 'role' ? ROLE_TH[v] || v : v);
   const keys = [...new Set([...Object.keys(o), ...Object.keys(n)])].filter((k) => k !== 'is_deleted' && JSON.stringify(o[k]) !== JSON.stringify(n[k]));
   if (h.action === 'create') return '<ul class="diff"><li>เพิ่มรายการใหม่</li></ul>';
+  if (h.action === 'import') return `<ul class="diff"><li>ถนน ${n.roads} สาย · สะพาน ${n.bridges} แห่ง · สวน ${n.parks} แห่ง</li></ul>`;
   if (!keys.length) return '';
   return `<ul class="diff">${keys.map((k) => `<li>${esc(LABELS[k] || k)}: <del>${esc(show(k, o[k]))}</del> → <ins>${esc(show(k, n[k]))}</ins></li>`).join('')}</ul>`;
 }
@@ -622,7 +650,7 @@ function histItem(h, withTitle) {
   let title = '';
   if (withTitle) {
     const nm = h.new_json ? JSON.parse(h.new_json).name : null;
-    title = `<b>${esc(TABLE_TH[h.table_name] || h.table_name)}: ${esc(nm || h.record_id)}</b> · `;
+    title = h.table_name === 'system' ? '<b>ระบบ</b> · ' : `<b>${esc(TABLE_TH[h.table_name] || h.table_name)}: ${esc(nm || h.record_id)}</b> · `;
   }
   return `<div class="hist-item ${h.action}"><div class="hist-meta">${title}${ACTION_TH[h.action] || h.action} · ${fmtTime(h.changed_at)} · ${esc(h.changed_by || '-')}</div>${diffList(h)}</div>`;
 }
@@ -650,38 +678,125 @@ async function renderHistory() {
 // ---------------------------------------------------------------- users
 async function renderUsers() {
   const el = $('#view-users');
-  el.innerHTML = `<div class="page-head"><div><h2>ผู้ใช้และสิทธิ์</h2>
-    <div class="muted small">ทุกคนต้องผ่าน Cloudflare Access ก่อน · คนที่ไม่อยู่ในรายการนี้จะได้สิทธิ์ "ดูอย่างเดียว"</div></div>
+  el.innerHTML = `<div class="page-head"><div><h2>จัดการผู้ใช้งาน</h2>
+    <div class="muted small">ผู้ใช้งาน = ดูและแก้ไขข้อมูล · ผู้ดูแลระบบ = ทุกอย่าง รวมถึงแก้รหัสทะเบียนทาง ซ่อน/กู้คืน ดูประวัติทั้งหมด และจัดการผู้ใช้</div></div>
     <button class="primary" id="u-add">+ เพิ่มผู้ใช้</button></div><div class="table-wrap" id="u-list">กำลังโหลด…</div>`;
   const load = async () => {
     const { data } = await api('users');
-    $('#u-list').innerHTML = `<table><thead><tr><th>อีเมล</th><th>ชื่อ</th><th>บทบาท</th><th>สถานะ</th><th></th></tr></thead><tbody>${
-      data.map((u) => `<tr><td>${esc(u.email)}</td><td>${esc(u.display_name)}</td><td><span class="role ${u.role}">${ROLE_TH[u.role]}</span></td>
-        <td>${u.active ? '<span class="pill yes">ใช้งาน</span>' : '<span class="pill no">ระงับ</span>'}</td>
-        <td><button data-u="${esc(JSON.stringify(u))}">แก้ไข</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">ยังไม่มีผู้ใช้</td></tr>'}</tbody></table>`;
+    const locked = (u) => u.locked_until && new Date(u.locked_until) > new Date();
+    $('#u-list').innerHTML = `<table><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อที่แสดง</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th></th></tr></thead><tbody>${
+      data.map((u) => `<tr><td><b>${esc(u.username)}</b></td><td>${esc(u.display_name)}</td><td><span class="role ${u.role}">${ROLE_TH[u.role] || u.role}</span></td>
+        <td>${!u.active ? '<span class="pill no">ระงับ</span>' : locked(u) ? '<span class="pill no">ล็อกชั่วคราว</span>' : u.must_change_pw ? '<span class="pill">รอตั้งรหัสใหม่</span>' : '<span class="pill yes">ใช้งาน</span>'}</td>
+        <td class="small">${u.last_login_at ? fmtTime(u.last_login_at) : '<span class="muted">ยังไม่เคยเข้า</span>'}</td>
+        <td><button data-u="${esc(JSON.stringify(u))}">แก้ไข</button></td></tr>`).join('')}</tbody></table>`;
     $$('[data-u]', el).forEach((b) => b.addEventListener('click', () => userForm(JSON.parse(b.dataset.u))));
   };
   const userForm = (u) => {
-    const d = modal(`<form id="u-form"><div class="m-head"><h2>${u ? 'แก้ไขผู้ใช้' : 'เพิ่มผู้ใช้'}</h2><button type="button" class="ghost" data-close>✕</button></div>
+    const d = modal(`<form id="u-form" autocomplete="off"><div class="m-head"><h2>${u ? 'แก้ไขผู้ใช้: ' + esc(u.username) : 'เพิ่มผู้ใช้'}</h2><button type="button" class="ghost" data-close aria-label="ปิด">✕</button></div>
       <div class="m-body"><div id="u-err"></div><div class="fields">
-        <div class="field wide"><label>อีเมล (ต้องตรงกับที่ใช้เข้า Cloudflare Access)</label><input name="email" type="email" required value="${esc(u?.email || '')}" ${u ? 'disabled' : ''}></div>
-        <div class="field wide"><label>ชื่อที่แสดง</label><input name="display_name" value="${esc(u?.display_name || '')}"></div>
-        <div class="field"><label>บทบาท</label><select name="role">${Object.entries(ROLE_TH).map(([k, v]) => `<option value="${k}" ${u?.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+        <div class="field"><label>ชื่อผู้ใช้ (ภาษาอังกฤษ ใช้เข้าสู่ระบบ)</label><input name="username" required pattern="[a-zA-Z0-9._-]{3,32}" value="${esc(u?.username || '')}" ${u ? 'disabled' : ''} placeholder="เช่น somchai.k"></div>
+        <div class="field"><label>ชื่อที่แสดง</label><input name="display_name" value="${esc(u?.display_name || '')}" placeholder="เช่น นายสมชาย ก."></div>
+        <div class="field"><label>สิทธิ์</label><select name="role">${Object.entries(ROLE_TH).map(([k, v]) => `<option value="${k}" ${(u?.role || 'user') === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
         <div class="field"><label>สถานะ</label><select name="active"><option value="1">ใช้งาน</option><option value="0" ${u && !u.active ? 'selected' : ''}>ระงับ</option></select></div>
-      </div><div class="muted small" style="margin-top:12px">ดูอย่างเดียว = ดูและส่งออกข้อมูล · แก้ไขได้ = เพิ่ม/แก้ไขข้อมูล (ยกเว้นรหัสทะเบียนทาง) · ผู้ดูแล = ทุกอย่าง รวมถึงซ่อน/กู้คืน และจัดการผู้ใช้</div></div>
-      <div class="m-foot"><button type="button" data-close>ยกเลิก</button><button class="primary" type="submit">บันทึก</button></div></form>`);
-    $('#u-form', d).addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const f = e.target;
-      const email = u?.email || f.email.value.trim();
-      try {
-        await api('users/' + encodeURIComponent(email), { method: 'PUT', body: { display_name: f.display_name.value.trim(), role: f.role.value, active: f.active.value === '1' } });
-        d.close(); toast('บันทึกผู้ใช้แล้ว'); load();
-      } catch (err) { $('#u-err', d).innerHTML = `<div class="err">${esc(err.message)}</div>`; }
+        <div class="field wide"><label>${u ? 'ตั้งรหัสผ่านใหม่ (เว้นว่างถ้าไม่เปลี่ยน)' : 'รหัสผ่านชั่วคราว'}</label>
+          <div class="range"><input name="password" type="text" ${u ? '' : 'required'} minlength="8" autocomplete="new-password" placeholder="อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข">
+          <button type="button" id="u-gen">สุ่มรหัส</button></div>
+          <div class="muted small">ผู้ใช้จะถูกบังคับให้ตั้งรหัสของตัวเองตอนเข้าครั้งแรก ส่งรหัสนี้ให้ผู้ใช้ทางช่องทางที่ปลอดภัย</div></div>
+      </div></div>
+      <div class="m-foot">${u && u.locked_until ? '<div class="left"><button type="button" id="u-unlock">ปลดล็อกบัญชี</button></div>' : ''}<button type="button" data-close>ยกเลิก</button><button class="primary" type="submit">บันทึก</button></div></form>`);
+    const f = $('#u-form', d);
+    $('#u-gen', d).addEventListener('click', () => {
+      const cs = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ', ds = '23456789';
+      const r = (set, n) => Array.from(crypto.getRandomValues(new Uint32Array(n)), (x) => set[x % set.length]).join('');
+      f.password.value = r(cs, 6) + r(ds, 4);
     });
+    const save = async (extra = {}) => {
+      const body = { display_name: f.display_name.value.trim(), role: f.role.value, active: f.active.value === '1', ...extra };
+      if (f.password.value) body.password = f.password.value;
+      try {
+        if (u) await api('users/' + encodeURIComponent(u.username), { method: 'PUT', body });
+        else await api('users', { method: 'POST', body: { ...body, username: f.username.value.trim() } });
+        const uname = u?.username || f.username.value.trim().toLowerCase();
+        load();
+        if (!body.password) { d.close(); toast('บันทึกผู้ใช้แล้ว'); return; }
+        // แสดงรหัสชั่วคราวค้างไว้ให้ผู้ดูแลคัดลอก (ระบบไม่เก็บรหัสจริง ดูซ้ำภายหลังไม่ได้)
+        modal(`<div class="m-head"><h2>บันทึกแล้ว</h2></div><div class="m-body">
+          <p>ส่งข้อมูลนี้ให้ผู้ใช้ ผู้ใช้จะต้องตั้งรหัสใหม่เองตอนเข้าครั้งแรก</p>
+          <dl class="detail"><dt>ที่อยู่เว็บ</dt><dd>${esc(location.origin)}</dd><dt>ชื่อผู้ใช้</dt><dd><b>${esc(uname)}</b></dd>
+          <dt>รหัสผ่านชั่วคราว</dt><dd><b style="font-family:monospace;font-size:17px">${esc(body.password)}</b></dd></dl>
+          <p class="muted small">ปิดหน้าต่างนี้แล้วจะดูรหัสนี้อีกไม่ได้ ถ้าลืมให้รีเซ็ตใหม่</p></div>
+          <div class="m-foot"><button id="cp-pw">คัดลอก</button><button class="primary" data-close>เสร็จ</button></div>`);
+        $('#cp-pw').addEventListener('click', () => navigator.clipboard.writeText(`RCRNIS ${location.origin}\nชื่อผู้ใช้: ${uname}\nรหัสผ่านชั่วคราว: ${body.password}`).then(() => toast('คัดลอกแล้ว')));
+      } catch (err) { $('#u-err', d).innerHTML = `<div class="err">${esc(err.message)}</div>`; }
+    };
+    f.addEventListener('submit', (e) => { e.preventDefault(); save(); });
+    $('#u-unlock', d)?.addEventListener('click', () => save({ unlock: true }));
   };
   $('#u-add').addEventListener('click', () => userForm(null));
   try { await load(); } catch (e) { $('#u-list').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+
+// ---------------------------------------------------------------- login / password
+function showLogin(msg = '') {
+  $('#tabs').hidden = true;
+  $('#me').innerHTML = '';
+  $$('.view').forEach((v) => v.classList.remove('active'));
+  if ($('#modal').open) $('#modal').close();
+  let box = $('#login');
+  if (!box) { box = document.createElement('section'); box.id = 'login'; $('main').prepend(box); }
+  $('#loading')?.remove();
+  box.innerHTML = `<form class="card login-card" id="login-form">
+    <h2>เข้าสู่ระบบ</h2>
+    <div class="muted small" style="margin-bottom:16px">ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง</div>
+    <div id="login-err">${msg ? `<div class="err">${esc(msg)}</div>` : ''}</div>
+    <div class="field"><label for="lg-user">ชื่อผู้ใช้</label><input id="lg-user" name="username" autocomplete="username" required autofocus></div>
+    <div class="field" style="margin-top:10px"><label for="lg-pass">รหัสผ่าน</label><input id="lg-pass" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="primary" type="submit" style="width:100%;justify-content:center;margin-top:16px">เข้าสู่ระบบ</button>
+    <div class="muted small" style="margin-top:12px;text-align:center">ลืมรหัสผ่าน ติดต่อผู้ดูแลระบบเพื่อรีเซ็ต</div></form>`;
+  $('#login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('button[type=submit]', e.target);
+    btn.disabled = true;
+    try {
+      await api('auth/login', { method: 'POST', body: { username: e.target.username.value, password: e.target.password.value } });
+      box.remove();
+      start();
+    } catch (err) {
+      $('#login-err').innerHTML = `<div class="err">${esc(err.message)}</div>`;
+      e.target.password.value = '';
+      btn.disabled = false;
+    }
+  });
+}
+
+function showChangePassword(forced) {
+  const d = modal(`<form id="pw-form"><div class="m-head"><h2>${forced ? 'ตั้งรหัสผ่านของคุณ' : 'เปลี่ยนรหัสผ่าน'}</h2>${forced ? '' : '<button type="button" class="ghost" data-close aria-label="ปิด">✕</button>'}</div>
+    <div class="m-body">${forced ? '<p class="muted">บัญชีนี้ใช้รหัสผ่านชั่วคราวอยู่ กรุณาตั้งรหัสผ่านใหม่ก่อนเริ่มใช้งาน</p>' : ''}<div id="pw-err"></div>
+      <div class="fields" style="grid-template-columns:1fr">
+        <div class="field"><label>รหัสผ่านปัจจุบัน</label><input name="current" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label>รหัสผ่านใหม่ (อย่างน้อย 8 ตัว มีตัวอักษรและตัวเลข)</label><input name="new" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="field"><label>ยืนยันรหัสผ่านใหม่</label><input name="confirm" type="password" autocomplete="new-password" required></div>
+      </div></div>
+    <div class="m-foot">${forced ? '<button type="button" id="pw-logout">ออกจากระบบ</button>' : '<button type="button" data-close>ยกเลิก</button>'}<button class="primary" type="submit">บันทึกรหัสผ่าน</button></div></form>`);
+  if (forced) d.addEventListener('cancel', (e) => e.preventDefault(), { once: false });
+  $('#pw-logout', d)?.addEventListener('click', logout);
+  $('#pw-form', d).addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.new.value !== f.confirm.value) { $('#pw-err', d).innerHTML = '<div class="err">ยืนยันรหัสผ่านไม่ตรงกัน</div>'; return; }
+    try {
+      await api('auth/password', { method: 'POST', body: { current: f.current.value, new: f.new.value } });
+      d.close(); toast('เปลี่ยนรหัสผ่านแล้ว');
+      if (forced) start();
+    } catch (err) { $('#pw-err', d).innerHTML = `<div class="err">${esc(err.message)}</div>`; }
+  });
+}
+
+async function logout() {
+  await api('auth/logout', { method: 'POST', body: {} }).catch(() => {});
+  S.me = null;
+  S.etags = {};
+  showLogin('ออกจากระบบแล้ว');
 }
 
 // ---------------------------------------------------------------- export
@@ -729,28 +844,42 @@ async function exportBackup() {
 }
 
 // ---------------------------------------------------------------- boot
-async function boot() {
+let booted = false;
+async function start() {
   try {
-    const [me, comms] = await Promise.all([api('me'), api('communities')]);
-    S.me = me.data;
-    S.communities = comms.data;
-    await refreshAll();
+    S.me = (await api('me')).data;
   } catch (e) {
+    if (e.status === 401) return showLogin();
     $('#loading').innerHTML = `<div class="err" style="display:inline-block">${esc(e.message)}</div>`;
     return;
   }
-  $('#loading').remove();
-  $('#me').innerHTML = `<span>${esc(S.me.name)}</span><span class="role ${S.me.role}">${ROLE_TH[S.me.role]}</span>`;
+  $('#me').innerHTML = `<span>${esc(S.me.name)}</span><span class="role ${S.me.role}">${ROLE_TH[S.me.role]}</span>
+    <button class="ghost me-btn" id="btn-pw" title="เปลี่ยนรหัสผ่าน">เปลี่ยนรหัส</button><button class="ghost me-btn" id="btn-logout">ออกจากระบบ</button>`;
+  $('#btn-pw').addEventListener('click', () => showChangePassword(false));
+  $('#btn-logout').addEventListener('click', logout);
+  if (S.me.must_change_pw) { $('#loading')?.remove(); return showChangePassword(true); }
+  try {
+    S.communities = (await api('communities')).data;
+    await refreshAll();
+  } catch (e) {
+    toast(e.message, true);
+    return;
+  }
+  $('#loading')?.remove();
+  $('#tabs').hidden = false;
   $$('#tabs a[data-role]').forEach((a) => { a.hidden = !isAdmin(); });
-  window.addEventListener('hashchange', route);
-  // ดึงข้อมูลใหม่เมื่อกลับมาที่แท็บ (ถ้าไม่มีการเปลี่ยนแปลง เซิร์ฟเวอร์ตอบ 304 ไม่เปลือง)
-  document.addEventListener('visibilitychange', async () => {
-    if (document.visibilityState !== 'visible' || $('#modal').open) return;
-    const before = S.roads;
-    await refreshAll().catch(() => {});
-    if (S.roads !== before) route();
-  });
+  if (!booted) {
+    booted = true;
+    window.addEventListener('hashchange', () => S.me && route());
+    // ดึงข้อมูลใหม่เมื่อกลับมาที่แท็บ (ถ้าไม่มีการเปลี่ยนแปลง เซิร์ฟเวอร์ตอบ 304 ไม่เปลือง)
+    document.addEventListener('visibilitychange', async () => {
+      if (!S.me || document.visibilityState !== 'visible' || $('#modal').open) return;
+      const before = S.roads;
+      await refreshAll().catch(() => {});
+      if (S.roads !== before) route();
+    });
+  }
   route();
 }
 
-boot();
+start();

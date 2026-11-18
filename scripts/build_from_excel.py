@@ -242,6 +242,15 @@ with open(f"{OUT}/seed.sql", "w", encoding="utf-8") as f:
             rw["updated_by"] = "นำเข้าจาก Excel"
         f.write(insert(t, rows))
 
+# ชุดเดียวกันในรูป JSON สำหรับปุ่ม "นำเข้าข้อมูลตั้งต้น" ในระบบ (Worker อ่านไฟล์นี้ตอน build)
+with open(f"{OUT}/seed.json", "w", encoding="utf-8") as f:
+    json.dump({
+        "communities": [{"id": i + 1, "name": n, "sort_order": i + 1} for i, n in enumerate(communities)],
+        # ตัดช่องว่าง (None) และชื่อผู้บันทึกออก เพื่อให้ไฟล์เล็ก
+        **{t: [{k: v for k, v in rw.items() if v is not None and k != "updated_by"} for rw in rows]
+           for t, rows in (("roads", roads), ("bridges", bridges), ("parks", parks))},
+    }, f, ensure_ascii=False, separators=(",", ":"))
+
 with open(f"{OUT}/data_issues.csv", "w", encoding="utf-8-sig", newline="") as f:
     w = csv.writer(f)
     w.writerow(["แท็บ", "ตำแหน่ง", "ชื่อ", "ช่อง", "ค่าเดิม", "ปัญหา/การดำเนินการ"])
