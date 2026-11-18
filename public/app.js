@@ -28,8 +28,8 @@ const regState = (r) => (isPublic(r) ? (r.reg_code ? 'yes' : 'no') : (r.reg_code
 const regCell = (r) => ({
   yes: esc(r.reg_code),
   no: '<span class="pill no">ยังไม่ขึ้น</span>',
-  check: `${esc(r.reg_code)} <span class="pill warn" title="มีรหัสทะเบียน แต่ประเภทที่ดินไม่ใช่สาธารณะ">ตรวจสอบ</span>`,
-  na: '<span class="muted small">ไม่ต้องขึ้นทะเบียน</span>',
+  check: `<span class="nw">${esc(r.reg_code)}</span> <span class="pill warn" title="มีรหัสทะเบียน แต่ประเภทที่ดินไม่ใช่สาธารณะ">ตรวจสอบ</span>`,
+  na: '<span class="muted small" title="ไม่ใช่ถนนสาธารณะ ไม่ต้องขึ้นทะเบียนทาง">ไม่ต้องขึ้น</span>',
 })[regState(r)];
 
 // นิยามฟอร์ม: type = text | num | int | range | community | textarea | latlng
@@ -377,8 +377,9 @@ function renderRoads() {
       </div></div>
     <div class="filters">${filterBar('rf')}<span class="count" id="rf-count"></span></div>
     <div class="table-wrap"><table class="roads-table"><thead><tr>
-      <th class="num">ลำดับ</th><th>รหัสทะเบียน</th><th>ชื่อถนน</th><th>ชุมชน</th><th>ประเภทที่ดิน</th><th>ผิวจราจร</th>
-      <th class="num">เขตทาง (ม.)</th><th class="num">กว้าง (ม.)</th><th class="num">ระยะ (กม.)</th><th class="num">โคม LED</th>
+      <th class="num" rowspan="2">ลำดับ</th><th rowspan="2">รหัสทะเบียน</th><th rowspan="2">ชื่อถนน</th><th rowspan="2">ชุมชน</th><th rowspan="2">ประเภทที่ดิน</th><th rowspan="2">ผิวจราจร</th>
+      <th class="num" rowspan="2">เขตทาง (ม.)</th><th class="num" rowspan="2">กว้าง (ม.)</th><th class="num" rowspan="2">ระยะ (กม.)</th><th class="th-grp" colspan="3">โคมไฟ (ดวง)</th></tr>
+      <tr><th class="num th-lamp">LED</th><th class="num th-lamp" title="ฟลูออเรสเซนต์">ฟลูออฯ</th><th class="num th-lamp">หลังเต่า</th>
     </tr></thead><tbody id="rf-body"></tbody></table></div>`;
   const draw = () => {
     const rows = filteredRoads();
@@ -386,10 +387,11 @@ function renderRoads() {
     $('#rf-body').innerHTML = rows.map((r) => `<tr class="click ${r.is_deleted ? 'deleted' : ''}" data-id="${r.id}">
       <td class="num c-seq">${r.seq ?? ''}</td><td class="code c-code">${regCell(r)}</td>
       <td class="c-name">${esc(r.name)}</td><td class="c-comm">${esc(commName(r.community_id))}</td><td class="c-land">${esc(r.land_type)}</td>
-      <td class="c-surf"><span class="dot" style="background:${surfColor(r.surface)}"></span>${esc(r.surface)}</td>
+      <td class="c-surf"><span class="surf-l"><span class="dot" style="background:${surfColor(r.surface)}"></span><span>${esc(r.surface)}</span></span></td>
       <td class="num c-m" data-label="เขตทาง">${fmtRange(r.row_w_min, r.row_w_max)}</td><td class="num c-m" data-label="กว้าง">${fmtRange(r.surf_w_min, r.surf_w_max)}</td>
-      <td class="num c-m" data-label="ระยะ กม.">${fmt(r.length_km, 3)}</td><td class="num c-m c-led" data-label="LED">${r.lamp_led ?? ''}</td></tr>`).join('')
-      || '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
+      <td class="num c-m" data-label="ระยะ กม.">${fmt(r.length_km, 3)}</td><td class="num c-m c-led" data-label="โคม LED">${r.lamp_led ?? ''}</td>
+      <td class="num c-m c-led" data-label="โคมฟลูออเรสเซนต์">${r.lamp_fluorescent ?? ''}</td><td class="num c-m c-led" data-label="โคมหลังเต่า">${r.lamp_turtle ?? ''}</td></tr>`).join('')
+      || '<tr><td colspan="12" class="muted" style="text-align:center;padding:30px">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
   };
   bindFilters('rf', draw);
   draw();
