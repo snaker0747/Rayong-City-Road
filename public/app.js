@@ -390,7 +390,7 @@ function renderRoads() {
       <td class="c-surf"><span class="surf-l"><span class="dot" style="background:${surfColor(r.surface)}"></span><span>${esc(r.surface)}</span></span></td>
       <td class="num c-m" data-label="เขตทาง">${fmtRange(r.row_w_min, r.row_w_max)}</td><td class="num c-m" data-label="กว้าง">${fmtRange(r.surf_w_min, r.surf_w_max)}</td>
       <td class="num c-m" data-label="ระยะ กม.">${fmt(r.length_km, 3)}</td><td class="num c-m c-led" data-label="โคม LED">${r.lamp_led ?? ''}</td>
-      <td class="num c-m c-led" data-label="โคมฟลูออเรสเซนต์">${r.lamp_fluorescent ?? ''}</td><td class="num c-m c-led" data-label="โคมหลังเต่า">${r.lamp_turtle ?? ''}</td></tr>`).join('')
+      <td class="num c-m c-led" data-label="โคมฟลูออฯ">${r.lamp_fluorescent ?? ''}</td><td class="num c-m c-led" data-label="โคมหลังเต่า">${r.lamp_turtle ?? ''}</td></tr>`).join('')
       || '<tr><td colspan="12" class="muted" style="text-align:center;padding:30px">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
   };
   bindFilters('rf', draw);

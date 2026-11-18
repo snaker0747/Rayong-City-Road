@@ -13,11 +13,11 @@
 [hidden] { display: none !important; }
 button, input, select, textarea, .leaflet-container { font-family: inherit; }
 /* ขนาดจริงของ TH Sarabun New (ไม่ขยาย) สำหรับเอกสารพิมพ์ ให้ 16pt เท่ากับในเอกสาร Word */
-/* CS ChatThaiUI (CS@nok · CC BY 4.0) — ใช้กับหัวเว็บ หัวข้อ เมนู และตัวเลขสรุป; ตาราง/ฟอร์ม/รายงานพิมพ์ยังเป็น TH Sarabun
+/* CS ChatThaiUI (CS@nok · CC BY 4.0) — ฟอนต์หลักของทั้งระบบ ยกเว้นหน้าพิมพ์รายงาน (TH Sarabun)
    มีแค่น้ำหนักปกติ จึงปิดการทำตัวหนาเทียม (font-synthesis) ไม่ให้ตัวอักษรหนาทึบ */
 @font-face { font-family: 'CS ChatThaiUI'; src: url('/fonts/CSChatThaiUI.woff2') format('woff2');
   font-weight: 100 900; font-style: normal; font-display: swap; size-adjust: 135%; }
-.brand-title, .brand-sub, h2, h3, .tabs a, .tab-more, .sb-toggle, .kpi .value, .kpi .label, .sbu-name, .rp-bar-title {
+.brand-title, .brand-sub, h2, h3, .tabs a, .tab-more, .sb-toggle, .kpi .value, .kpi .label, .sbu-name {
   font-family: 'CS ChatThaiUI', 'TH Sarabun New', sans-serif; font-synthesis: none; }
 @font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
@@ -41,7 +41,7 @@ button, input, select, textarea, .leaflet-container { font-family: inherit; }
   --s-lat: #c0713a;
   --s-oth: #8d6cab;
   --radius: 10px;
-  font-family: 'TH Sarabun New', 'TH SarabunPSK', 'Sarabun', sans-serif;
+  font-family: 'CS ChatThaiUI', 'TH Sarabun New', 'TH SarabunPSK', sans-serif; font-synthesis: none;
   color: var(--ink);
   background: var(--bg);
 }
@@ -134,7 +134,7 @@ th { position: sticky; top: 0; background: #f8faf9; font-weight: 600; font-size:
   .roads-table td.c-name { min-width: 180px; }
   .roads-table td.c-code { white-space: normal; }
   .roads-table td.c-code .nw { white-space: nowrap; }
-  .roads-table th, .roads-table td { padding-left: 8px; padding-right: 8px; }
+  .roads-table th, .roads-table td { padding-left: 7px; padding-right: 7px; }
 }
 .surf-l { display: inline-flex; align-items: baseline; gap: 0; }
 .surf-l .dot { flex: none; }
@@ -158,7 +158,7 @@ tfoot td { font-weight: 600; background: #f8faf9; }
 .map-tools input[type=search] { width: 260px; }
 td.code { white-space: nowrap; }
 .legend { background: #fff; padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.8; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
-.leaflet-popup-content { font-family: 'TH Sarabun New', sans-serif; font-size: 14px; }
+.leaflet-popup-content { font-family: 'CS ChatThaiUI', 'TH Sarabun New', sans-serif; font-size: 14px; }
 .leaflet-popup-content b { font-size: 15px; }
 
 /* modal */
@@ -218,7 +218,8 @@ body { -webkit-tap-highlight-color: rgba(15, 94, 110, .15); }
 .tabs .sm, .tab-more { display: none; }
 .ph-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .tabs, .tab-more { -webkit-tap-highlight-color: transparent; }
-.search-row { display: flex; gap: 8px; align-items: center; }
+.search-row { display: flex; gap: 8px; align-items: center; min-width: 0; max-width: 100%; }
+.search-row > * { min-width: 0; }
 .filter-more { display: contents; }
 .filter-toggle { display: none; }
 .filter-toggle.has { border-color: var(--brand); color: var(--brand); background: var(--brand-2); }
@@ -268,7 +269,7 @@ body { -webkit-tap-highlight-color: rgba(15, 94, 110, .15); }
   .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100; display: flex; gap: 0; padding: 0 0 env(safe-area-inset-bottom);
     background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -2px 12px rgba(0,0,0,.06); overflow: visible; }
   .tabs[hidden] { display: none !important; }
-  .tabs a, .tab-more { flex: 1 1 0; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 2px 6px; min-height: 58px;
+  .tabs a, .tab-more { flex: 1 1 0; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 2px 6px; min-height: 58px;
     font-size: 11px; font-weight: 500; border-radius: 0; color: var(--muted); border: none; background: none; display: flex; align-items: center; }
   .tabs a.active { background: none; color: var(--brand); }
   .tabs a.active .ti { stroke-width: 2.3; }
@@ -353,10 +354,10 @@ body { -webkit-tap-highlight-color: rgba(15, 94, 110, .15); }
   #view-roads .table-wrap { max-height: none; overflow: visible; border: none; background: none; }
   .roads-table, .roads-table tbody { display: block; }
   .roads-table thead { display: none; }
-  .roads-table tr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 8px; background: #fff; border: 1px solid var(--line);
+  .roads-table tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 0; gap: 4px 8px; background: #fff; border: 1px solid var(--line);
     border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; align-content: start; }
   .roads-table tr:active { background: #f3f8f8; }
-  .roads-table td { padding: 0; border: none; display: block; text-align: left; }
+  .roads-table td { padding: 0; border: none; display: block; text-align: left; min-width: 0; overflow-wrap: anywhere; }
   .roads-table td.c-seq { display: none; }
   .roads-table td.c-name { grid-column: 1 / 4; grid-row: 1; font-weight: 600; font-size: 15px; }
   .roads-table td.c-code { grid-column: 4; grid-row: 1; justify-self: end; font-size: 12px; color: var(--muted); }
@@ -365,7 +366,7 @@ body { -webkit-tap-highlight-color: rgba(15, 94, 110, .15); }
   .roads-table td.c-land { grid-column: 1 / 3; font-size: 13px; }
   .roads-table td.c-surf { grid-column: 3 / 5; font-size: 13px; }
   .roads-table td.c-m { display: flex; flex-direction: column; font-size: 14px; margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--line); text-align: left; }
-  .roads-table td.c-m::before { content: attr(data-label); font-size: 11px; color: var(--muted); }
+  .roads-table td.c-m::before { content: attr(data-label); font-size: 11px; color: var(--muted); white-space: normal; overflow-wrap: anywhere; }
   .roads-table td.c-m:empty::after { content: '–'; color: var(--muted); }
   .roads-table td.c-led { text-align: left; }
   .roads-table td[colspan] { grid-column: 1 / -1; }
@@ -413,7 +414,7 @@ h2, h3 { line-height: 1.5; }
 td, th, dl.detail dt, dl.detail dd, .field label { line-height: 1.6; }
 
 /* ============================================================ รายงานสำหรับพิมพ์ */
-#report-view { position: fixed; inset: 0; z-index: 2500; background: #dfe4e3; display: flex; flex-direction: column; }
+#report-view { font-family: 'TH Sarabun New', 'TH SarabunPSK', sans-serif; font-synthesis: weight; position: fixed; inset: 0; z-index: 2500; background: #dfe4e3; display: flex; flex-direction: column; }
 body.rp-open { overflow: hidden; }
 .rp-bar { background: #fff; border-bottom: 1px solid var(--line); padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 .rp-bar-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
