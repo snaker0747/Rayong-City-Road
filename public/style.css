@@ -449,6 +449,31 @@ body.rp-open { overflow: hidden; }
   .rp-stage { padding: 10px 8px 30px; }
 }
 
+/* ---------------------------------------------------------------- Sidebar (แท็บเล็ต/คอมพิวเตอร์) ย่อเป็นไอคอนได้ */
+.sb-toggle { display: none; }
+@media (min-width: 761px) {
+  html { --sb-w: 224px; }
+  html.sb-mini { --sb-w: 68px; }
+  .tabs { position: fixed; top: var(--top-h, 62px); left: 0; bottom: 0; width: var(--sb-w); z-index: 900;
+    flex-direction: column; gap: 2px; padding: 10px 10px 16px; overflow-x: hidden; overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--line); transition: width .2s ease; }
+  .tabs a, .sb-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; min-height: 44px; white-space: nowrap; }
+  .tabs .ti { width: 20px; height: 20px; }
+  .tabs a.active { font-weight: 600; }
+  .sb-toggle { width: 100%; justify-content: flex-start; border: none; background: none; color: var(--muted); font: inherit; cursor: pointer;
+    margin-bottom: 6px; border-bottom: 1px solid var(--line); border-radius: 10px 10px 0 0; }
+  .sb-toggle:hover { background: var(--bg); color: var(--ink); }
+  .tabs > a > span, .sb-toggle > span { transition: opacity .15s; }
+  html.sb-mini .tabs > a > span, html.sb-mini .sb-toggle > span { opacity: 0; width: 0; overflow: hidden; }
+  html.sb-mini .tabs a, html.sb-mini .sb-toggle { justify-content: center; padding-left: 0; padding-right: 0; gap: 0; }
+  .topbar { border-bottom: none; }
+  main, .footer { margin-left: var(--sb-w); margin-right: 0; width: auto; min-width: 0; max-width: none; transition: margin-left .2s ease; }
+  main { padding: 20px 24px; }
+  #map { height: calc(100vh - 200px); }
+  body.rp-open .tabs { display: none; }
+  body:has(#tabs[hidden]) main, body:has(#tabs[hidden]) .footer { margin-left: 0; }
+}
+
 /* ---------------------------------------------------------------- ตอนพิมพ์ */
 @page { size: A4; margin: 25mm 20mm 20mm 30mm;
   @bottom-left { content: var(--rp-date, ""); font-family: 'TH Sarabun Doc'; font-size: 16pt; }

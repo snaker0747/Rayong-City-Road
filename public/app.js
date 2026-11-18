@@ -1056,4 +1056,27 @@ async function start() {
   route();
 }
 
+// ---------------------------------------------------------------- sidebar
+(function sidebar() {
+  const top = document.querySelector('.topbar');
+  const setTop = () => document.documentElement.style.setProperty('--top-h', top.offsetHeight + 'px');
+  setTop();
+  if ('ResizeObserver' in window) new ResizeObserver(setTop).observe(top); else window.addEventListener('resize', setTop);
+  // ชื่อเมนูเป็น tooltip ตอนย่อ
+  $$('#tabs a').forEach((a) => { a.title = a.textContent.trim(); });
+  const btn = $('#sb-toggle');
+  const sync = () => {
+    const mini = document.documentElement.classList.contains('sb-mini');
+    btn.querySelector('span').textContent = mini ? 'ขยายเมนู' : 'ย่อเมนู';
+    btn.setAttribute('aria-expanded', String(!mini));
+  };
+  btn.addEventListener('click', () => {
+    const mini = document.documentElement.classList.toggle('sb-mini');
+    try { localStorage.setItem('rcrnis_sb', mini ? 'mini' : 'full'); } catch {}
+    sync();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 230); // ให้แผนที่ปรับขนาดตาม
+  });
+  sync();
+})();
+
 start();

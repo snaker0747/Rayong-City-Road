@@ -18,6 +18,7 @@
   <link rel="preload" href="/fonts/THSarabunNew-Bold.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/vendor/leaflet.css">
   <link rel="stylesheet" href="/style.css">
+  <script>try{var m=localStorage.getItem('rcrnis_sb');if(m?m==='mini':innerWidth<1200)document.documentElement.classList.add('sb-mini')}catch(e){}</script>
 </head>
 <body>
   <header class="topbar">
@@ -32,6 +33,7 @@
     <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" hidden>
+      <button type="button" class="sb-toggle" id="sb-toggle" aria-label="ย่อ/ขยายเมนู" title="ย่อ/ขยายเมนู"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>ย่อเมนู</span></button>
       <a href="#dashboard" data-view="dashboard"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/></svg><span>ภาพรวม</span></a>
       <a href="#roads" data-view="roads"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3 5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></svg><span>ถนน</span></a>
       <a href="#map" data-view="map"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/></svg><span>แผนที่</span></a>
