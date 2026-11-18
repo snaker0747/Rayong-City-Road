@@ -751,10 +751,8 @@ function showLogin(msg = '') {
     <div id="login-err">${msg ? `<div class="err">${esc(msg)}</div>` : ''}</div>
     <div class="field"><label for="lg-user">ชื่อผู้ใช้</label><input id="lg-user" name="username" autocomplete="username" required autofocus></div>
     <div class="field" style="margin-top:10px"><label for="lg-pass">รหัสผ่าน</label><input id="lg-pass" name="password" type="password" autocomplete="current-password" required></div>
-    <label class="remember"><input type="checkbox" name="remember" id="lg-remember"> จดจำการเข้าสู่ระบบ (30 วัน)</label>
-    <div class="muted small">ไม่ควรติ๊กเมื่อใช้เครื่องสาธารณะหรือเครื่องที่ใช้ร่วมกับผู้อื่น</div>
-    <button class="primary" type="submit" style="width:100%;justify-content:center;margin-top:16px">เข้าสู่ระบบ</button>
-    <div class="muted small" style="margin-top:12px;text-align:center">ลืมรหัสผ่าน ติดต่อผู้ดูแลระบบเพื่อรีเซ็ต</div></form>`;
+    <label class="remember"><input type="checkbox" name="remember" id="lg-remember"> จดจำการเข้าสู่ระบบ</label>
+    <button class="primary" type="submit" style="width:100%;justify-content:center;margin-top:16px">เข้าสู่ระบบ</button></form>`;
   // จำชื่อผู้ใช้ไว้ในเครื่องเมื่อเลือกจดจำ (ไม่เก็บรหัสผ่าน)
   try {
     const saved = localStorage.getItem('rcrnis_user');
