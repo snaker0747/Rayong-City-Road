@@ -1,4 +1,4 @@
-/* RCRNIS — รายงานสรุปข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (A4 แนวนอน, TH Sarabun New 16 pt, เลขอารบิก)
+/* RCRNIS — รายงานสรุปข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (A4 แนวนอน, TH Sarabun New 10 pt, เลขอารบิก)
    ใช้ตัวแปร/ฟังก์ชันจาก app.js (S, esc, fmt, landGroup, surfGroup, isPublic, regState, commName, ...) */
 'use strict';
 
@@ -328,7 +328,7 @@ function openReport() {
     saveReportPrefs(o);
     const my = ++seq;
     // รอฟอนต์ให้พร้อมก่อนวัดความสูง ไม่อย่างนั้นแบ่งหน้าคลาดเคลื่อน
-    try { await Promise.all([document.fonts.load('16pt "TH Sarabun Doc"'), document.fonts.load('bold 16pt "TH Sarabun Doc"')]); } catch {}
+    try { await Promise.all([document.fonts.load('10pt "TH Sarabun Doc"'), document.fonts.load('bold 10pt "TH Sarabun Doc"')]); } catch {}
     if (my !== seq) return;
     const paper = $('#rp-paper', v);
     paper.style.zoom = '';
