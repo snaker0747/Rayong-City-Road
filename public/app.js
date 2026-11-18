@@ -1031,6 +1031,7 @@ async function start() {
   $('#btn-pw').addEventListener('click', () => showChangePassword(false));
   $('#tab-more').onclick = showMoreMenu;
   $('#btn-logout').addEventListener('click', logout);
+  renderSidebarUser();
   if (S.me.must_change_pw) { $('#loading')?.remove(); return showChangePassword(true); }
   try {
     S.communities = (await api('communities')).data;
@@ -1054,6 +1055,25 @@ async function start() {
     });
   }
   route();
+}
+
+// ---------------------------------------------------------------- ผู้ใช้ที่ด้านล่าง sidebar
+function renderSidebarUser() {
+  const box = $('#sb-user');
+  if (!box) return;
+  const name = S.me.name || S.me.username || '';
+  const initial = [...name.trim()].find((ch) => /[\p{L}\p{N}]/u.test(ch) && !/[\u0E31\u0E34-\u0E3A\u0E40-\u0E44\u0E47-\u0E4E]/.test(ch)) || '?';
+  box.innerHTML = `
+    <div class="sbu-card" title="${esc(name)} · ${ROLE_TH[S.me.role]}">
+      <span class="sbu-avatar ${S.me.role}" aria-hidden="true">${esc(initial.toUpperCase())}</span>
+      <span class="sbu-info"><b class="sbu-name">${esc(name)}</b><span class="role ${S.me.role}">${ROLE_TH[S.me.role]}</span></span>
+    </div>
+    <div class="sbu-actions">
+      <button type="button" class="sbu-btn" id="sb-pw" title="เปลี่ยนรหัสผ่าน"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 9.5a4 4 0 1 0-3.4 3.95L9 15.5V18H6.5v2.5H4V18l6.05-6.05"/><circle cx="15.5" cy="8.5" r="1"/></svg><span>เปลี่ยนรหัสผ่าน</span></button>
+      <button type="button" class="sbu-btn sbu-out" id="sb-out" title="ออกจากระบบ"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg><span>ออกจากระบบ</span></button>
+    </div>`;
+  $('#sb-pw').addEventListener('click', () => showChangePassword(false));
+  $('#sb-out').addEventListener('click', logout);
 }
 
 // ---------------------------------------------------------------- sidebar
