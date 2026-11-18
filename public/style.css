@@ -422,10 +422,17 @@ body.rp-open { overflow: hidden; }
 .rp-opt-toggle { display: none; }
 .rp-stage { flex: 1; overflow: auto; padding: 20px 8px 40px; -webkit-overflow-scrolling: touch; }
 
-/* กระดาษ A4 — ระยะขอบแบบเอกสารราชการ: บน 2.5 ซม. ล่าง 2 ซม. ซ้าย 3 ซม. ขวา 2 ซม. ตัวอักษร 16 pt ทั้งฉบับ */
-.rp-paper { width: 297mm; min-height: 210mm; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.18);
-  padding: 20mm 20mm 20mm 25mm; box-sizing: border-box; color: #000;
+/* กระดาษ A4 แนวนอน แสดงทีละหน้า — ขอบ บน/ขวา/ล่าง 2 ซม. ซ้าย 2.5 ซม. เนื้อหา 16 pt, footer 12 pt สีเทา */
+.rp-paper { width: 297mm; margin: 0 auto; color: #000;
   font-family: 'TH Sarabun Doc', 'TH Sarabun New', sans-serif; font-size: 16pt; line-height: 1.25; }
+.rp-page { position: relative; width: 297mm; height: 210mm; margin: 0 auto 8mm; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  box-sizing: border-box; overflow: hidden; }
+.rp-body { position: absolute; top: 20mm; left: 25mm; width: 252mm; height: 170mm; overflow: hidden; }
+.rp-body > :first-child { margin-top: 0 !important; padding-top: 0; }
+.rp-src { position: absolute; left: -99999px; top: 0; width: 252mm; visibility: hidden; }
+.rp-foot { position: absolute; left: 25mm; right: 20mm; bottom: 9mm; display: flex; justify-content: space-between; gap: 10mm;
+  color: #9a9a9a; line-height: 1.2; white-space: pre; }
+.rp-paper .rp-foot, .rp-paper .rp-foot * { font-size: 12pt; font-weight: 400; }
 .rp-paper * { font-family: inherit; font-size: 16pt; }
 .rp-head { text-align: center; margin: 0 0 12pt; }
 .rp-title { font-weight: 700; margin: 0; line-height: 1.4; }
@@ -519,9 +526,7 @@ body.rp-open { overflow: hidden; }
 }
 
 /* ---------------------------------------------------------------- ตอนพิมพ์ */
-@page { size: A4 landscape; margin: 20mm 20mm 20mm 25mm;
-  @bottom-left { content: "จัดทำโดย ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง    " var(--rp-date, ""); font-family: 'TH Sarabun Doc'; font-size: 16pt; white-space: pre; }
-  @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-family: 'TH Sarabun Doc'; font-size: 16pt; } }
+@page { size: A4 landscape; margin: 0; }
 @media print {
   body.rp-open > *:not(#report-view) { display: none !important; }
   html, body.rp-open { background: #fff !important; }
@@ -529,6 +534,8 @@ body.rp-open { overflow: hidden; }
   #report-view { position: static; display: block; background: #fff; }
   .rp-bar { display: none !important; }
   .rp-stage { padding: 0; overflow: visible; }
-  .rp-paper { width: auto; min-height: 0; box-shadow: none; padding: 0; margin: 0; zoom: 1 !important; }
+  .rp-paper { width: 297mm; margin: 0; zoom: 1 !important; }
+  .rp-page { margin: 0; box-shadow: none; break-after: page; page-break-after: always; }
+  .rp-page:last-child { break-after: auto; page-break-after: auto; }
   .rp-t th, .rp-t .rp-total td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

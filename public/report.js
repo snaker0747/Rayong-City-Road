@@ -202,6 +202,88 @@ function buildReport(o) {
   return parts.join('');
 }
 
+// ---------------------------------------------------------------- แบ่งหน้า A4
+// จัดเนื้อหาลงกระดาษ A4 แนวนอนทีละหน้า (ตัวอย่างบนจอ = ที่พิมพ์ออกจริง)
+const REPORT_FOOT = 'จัดทำโดย ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง';
+function paginateReport(paper, html) {
+  paper.innerHTML = `<div class="rp-src">${html}</div>`;
+  const src = paper.firstElementChild;
+  // แยกเป็นบล็อก: หัวรายงาน, หัวข้อ, ย่อหน้า, ตาราง (ตัดข้ามหน้าได้), กลุ่มที่ห้ามแยก
+  const blocks = [];
+  for (const el of [...src.children]) {
+    if (el.tagName !== 'SECTION') { blocks.push({ el }); continue; }
+    const brk = el.classList.contains('rp-appendix');
+    if (el.classList.contains('rp-keep')) { blocks.push({ el, brk }); continue; }
+    [...el.children].forEach((c, i) => blocks.push({ el: c, brk: brk && i === 0 }));
+  }
+  const pages = [];
+  let body;
+  const newPage = () => {
+    const pg = document.createElement('div');
+    pg.className = 'rp-page';
+    pg.innerHTML = '<div class="rp-body"></div><div class="rp-foot"><span></span><span></span></div>';
+    paper.append(pg);
+    pages.push(pg);
+    body = pg.firstElementChild;
+  };
+  const over = () => body.scrollHeight > body.clientHeight + 1;
+  // หัวข้อที่ค้างท้ายหน้า ย้ายไปหน้าใหม่พร้อมเนื้อหา
+  const takeHeading = () => {
+    const l = body.lastElementChild;
+    if (l && l.matches('.rp-h2') && body.children.length > 1) { l.remove(); return l; }
+    return null;
+  };
+  const moveOn = () => { const h = takeHeading(); newPage(); if (h) body.append(h); };
+  const placeTable = (t) => {
+    const units = [];
+    for (const tb of t.tBodies) {
+      if (tb.classList.contains('rp-tail')) units.push({ tail: true, rows: [...tb.rows] });
+      else for (const r of tb.rows) units.push({ rows: [r] });
+    }
+    const colgroup = t.querySelector('colgroup');
+    let shell, count;
+    const start = () => {
+      shell = t.cloneNode(false);
+      if (colgroup) shell.append(colgroup.cloneNode(true));
+      if (t.tHead) shell.append(t.tHead.cloneNode(true)); // หัวตารางซ้ำทุกหน้า
+      body.append(shell);
+      count = 0;
+    };
+    start();
+    for (const u of units) {
+      const tb = document.createElement('tbody');
+      if (u.tail) tb.className = 'rp-tail';
+      u.rows.forEach((r) => tb.append(r));
+      shell.append(tb);
+      if (!over()) { count++; continue; }
+      tb.remove();
+      if (count === 0) {
+        shell.remove();
+        if (body.children.length) moveOn();
+        start();
+      } else { newPage(); start(); }
+      shell.append(tb);
+      count++;
+    }
+  };
+  newPage();
+  for (const b of blocks) {
+    if (b.brk && body.children.length) newPage();
+    if (b.el.matches('table.rp-t')) { placeTable(b.el); continue; }
+    body.append(b.el);
+    if (over() && body.children.length > 1) { b.el.remove(); moveOn(); body.append(b.el); }
+  }
+  src.remove();
+  if (pages.length > 1 && !body.children.length) pages.pop().remove();
+  const date = `ข้อมูล ณ วันที่ ${thDate()}`;
+  pages.forEach((pg, i) => {
+    const [l, r] = pg.querySelectorAll('.rp-foot span');
+    l.textContent = `${REPORT_FOOT}    ${date}`;
+    r.textContent = `หน้า ${i + 1} / ${pages.length}`;
+  });
+  return pages.length;
+}
+
 // ---------------------------------------------------------------- หน้าจอรายงาน
 function openReport() {
   const o = reportPrefs();
@@ -212,7 +294,7 @@ function openReport() {
   v.innerHTML = `
     <div class="rp-bar">
       <div class="rp-bar-row">
-        <b class="rp-bar-title">พิมพ์รายงานสรุปข้อมูลถนน</b>
+        <b class="rp-bar-title">พิมพ์รายงานสรุปข้อมูลถนน</b><span class="muted small" id="rp-pages"></span>
         <button type="button" class="ghost rp-opt-toggle" id="rp-opt-toggle">ตั้งค่ารายงาน</button>
         <span class="rp-spacer"></span>
         <button type="button" id="rp-close">ปิด</button>
@@ -223,7 +305,7 @@ function openReport() {
         <fieldset class="rp-secs"><legend>หัวข้อในรายงาน</legend>${REPORT_SECTIONS.map(([k, l]) => `<label><input type="checkbox" name="sec_${k}" ${o.sec[k] ? 'checked' : ''}> ${l}</label>`).join('')}</fieldset>
       </form>
     </div>
-    <div class="rp-stage"><article class="rp-paper" id="rp-paper"></article></div>`;
+    <div class="rp-stage"><article class="rp-paper" id="rp-paper" aria-live="polite"></article></div>`;
   document.body.classList.add('rp-open');
   history.pushState({ report: true }, '');
 
@@ -236,21 +318,30 @@ function openReport() {
   // ย่อกระดาษ A4 ให้พอดีจอ (มือถือ/แท็บเล็ต) ตอนดูตัวอย่าง
   const fitPaper = () => {
     const paper = $('#rp-paper', v);
+    if (!paper) return;
     const avail = $('.rp-stage', v).clientWidth - 16;
     paper.style.zoom = avail < 1123 ? String(Math.max(avail / 1123, 0.25)) : ''; // A4 แนวนอน = 297 มม. ≈ 1123 px
   };
-  const render = () => {
+  let seq = 0;
+  const render = async () => {
     read();
-    $('#rp-paper', v).innerHTML = buildReport(o);
-    fitPaper();
     saveReportPrefs(o);
+    const my = ++seq;
+    // รอฟอนต์ให้พร้อมก่อนวัดความสูง ไม่อย่างนั้นแบ่งหน้าคลาดเคลื่อน
+    try { await Promise.all([document.fonts.load('16pt "TH Sarabun Doc"'), document.fonts.load('bold 16pt "TH Sarabun Doc"')]); } catch {}
+    if (my !== seq) return;
+    const paper = $('#rp-paper', v);
+    paper.style.zoom = '';
+    const n = paginateReport(paper, buildReport(o));
+    $('#rp-pages', v).textContent = `${n} หน้า`;
+    fitPaper();
   };
   form.addEventListener('input', () => { clearTimeout(render.t); render.t = setTimeout(render, 250); });
   form.addEventListener('change', render);
   window.addEventListener('resize', fitPaper);
   $('#rp-opt-toggle', v).addEventListener('click', () => form.classList.toggle('open'));
-  $('#rp-print', v).addEventListener('click', () => {
-    render();
+  $('#rp-print', v).addEventListener('click', async () => {
+    await render();
     const old = document.title;
     const comm = o.community ? commName(Number(o.community)) : '';
     document.title = `รายงานข้อมูลถนน${comm ? '_' + comm : ''}_${new Date().toISOString().slice(0, 10)}`; // ชื่อไฟล์ตอนบันทึก PDF
