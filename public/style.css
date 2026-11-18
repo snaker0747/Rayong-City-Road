@@ -454,6 +454,7 @@ body.rp-open { overflow: hidden; }
 .rp-t tr.rp-grp td { font-weight: 700; background: #f2f2f2; }
 .rp-t td.ind { padding-left: 8pt; }
 .rp-t td.c { text-align: center; }
+.rp-t th { white-space: nowrap; }
 .rp-t tr { break-inside: avoid; page-break-inside: avoid; }
 .rp-t .sub { color: #333; }
 .nw { white-space: nowrap; }

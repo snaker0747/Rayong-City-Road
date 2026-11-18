@@ -118,9 +118,9 @@ function buildReport(o) {
     });
     parts.push(`<section>${H('ข้อมูลถนนรายชุมชน')}
       <table class="rp-t"><colgroup><col style="width:5%"><col style="width:21%"><col style="width:12.5%"><col style="width:16%"><col style="width:13.5%"><col style="width:10.5%"><col style="width:10.5%"><col style="width:11%"></colgroup>
-      <thead><tr><th rowspan="2">ที่</th><th rowspan="2">ชุมชน</th><th colspan="2">จำนวนถนน (สาย)</th><th colspan="3">ถนนสาธารณะ (สาย)</th><th rowspan="2">ระยะ<br>ทาง<br>(กม.)</th></tr>
-      <tr><th>ทั้งหมด</th><th>สาธารณะ</th><th>ขึ้น<br>ทะเบียน</th><th>ยังไม่<br>ขึ้น</th><th>ผิวไม่<br>ถาวร</th></tr></thead>
-      ${tbodyWithTotal(rows.map((x, i) => `<tr><td class="n">${i + 1}</td><td>${esc(x.c.name)}</td><td class="n">${x.n}</td><td class="n">${n0(x.p)}</td><td class="n">${n0(x.reg)}</td><td class="n">${n0(x.p - x.reg)}</td><td class="n">${n0(x.unp)}</td><td class="n">${x.km ? fmt(x.km, 2) : '–'}</td></tr>`),
+      <thead><tr><th rowspan="2">ที่</th><th rowspan="2">ชุมชน</th><th colspan="2">จำนวนถนน (สาย)</th><th colspan="3">ถนนสาธารณะ (สาย)</th><th rowspan="2">ระยะทาง (กม.)</th></tr>
+      <tr><th>ทั้งหมด</th><th>สาธารณะ</th><th>ขึ้นทะเบียน</th><th>ยังไม่ขึ้น</th><th>ผิวไม่ถาวร</th></tr></thead>
+      ${tbodyWithTotal(rows.map((x, i) => `<tr><td class="c">${i + 1}</td><td>${esc(x.c.name)}</td><td class="n">${x.n}</td><td class="n">${n0(x.p)}</td><td class="n">${n0(x.reg)}</td><td class="n">${n0(x.p - x.reg)}</td><td class="n">${n0(x.unp)}</td><td class="n">${x.km ? fmt(x.km, 2) : '–'}</td></tr>`),
         `<tr class="rp-total"><td></td><td>รวม</td><td class="n">${R.length}</td><td class="n">${PUB.length}</td><td class="n">${reg.length}</td><td class="n">${unreg.length}</td><td class="n">${unpaved.length}</td><td class="n">${fmt(km, 2)}</td></tr>`)}</table>
       <p class="rp-note">หมายเหตุ ระยะทางรวมเฉพาะสายทางที่มีข้อมูลระยะทาง</p></section>`);
   }
@@ -129,8 +129,8 @@ function buildReport(o) {
     const g = byComm(unreg);
     parts.push(`<section>${H(`ถนนสาธารณะที่ยังไม่ขึ้นทะเบียนทาง จำแนกตามชุมชน (${fmt(unreg.length)} สาย)`)}
       ${g.length ? `<table class="rp-t"><colgroup><col style="width:7%"><col style="width:41%"><col style="width:15%"><col style="width:22%"><col style="width:15%"></colgroup>
-      <thead><tr><th>ที่</th><th>ชุมชน</th><th>จำนวน<br>(สาย)</th><th>ร้อยละของ<br>ถนนสาธารณะ<br>ในชุมชน</th><th>ผิว<br>ไม่ถาวร</th></tr></thead>
-      ${tbodyWithTotal(g.map((c, i) => { const p = PUB.filter((r) => r.community_id === c.id).length; return `<tr><td class="n">${i + 1}</td><td>${esc(c.name)}</td><td class="n">${c.rows.length}</td><td class="n">${pctTxt(c.rows.length, p)}</td><td class="n">${n0(c.rows.filter(isUnpaved).length)}</td></tr>`; }),
+      <thead><tr><th>ที่</th><th>ชุมชน</th><th>จำนวน (สาย)</th><th>ร้อยละของถนนสาธารณะในชุมชน</th><th>ผิวไม่ถาวร</th></tr></thead>
+      ${tbodyWithTotal(g.map((c, i) => { const p = PUB.filter((r) => r.community_id === c.id).length; return `<tr><td class="c">${i + 1}</td><td>${esc(c.name)}</td><td class="n">${c.rows.length}</td><td class="n">${pctTxt(c.rows.length, p)}</td><td class="n">${n0(c.rows.filter(isUnpaved).length)}</td></tr>`; }),
         `<tr class="rp-total"><td></td><td>รวม</td><td class="n">${unreg.length}</td><td class="n">${pctTxt(unreg.length, PUB.length)}</td><td class="n">${n0(unreg.filter(isUnpaved).length)}</td></tr>`)}</table>` : '<p class="rp-note">ไม่มีข้อมูล</p>'}</section>`);
   }
 
@@ -139,8 +139,8 @@ function buildReport(o) {
     const area = known.reduce((a, r) => a + areaSqm(r), 0);
     parts.push(`<section>${H(`ถนนสาธารณะผิวไม่ถาวร (ลูกรัง/หินคลุก) (${fmt(unpaved.length)} สาย)`)}
       ${unpaved.length ? `<table class="rp-t"><colgroup><col style="width:5%"><col style="width:36%"><col style="width:19%"><col style="width:12%"><col style="width:7%"><col style="width:10%"><col style="width:11%"></colgroup>
-      <thead><tr><th>ที่</th><th>ชื่อถนน</th><th>ชุมชน</th><th>ผิว<br>จราจร</th><th>ยาว<br>(ม.)</th><th>กว้าง<br>ผิว (ม.)</th><th>พื้นที่<br>(ตร.ม.)</th></tr></thead>
-      ${tbodyWithTotal(unpaved.map((r, i) => `<tr><td class="n">${i + 1}</td><td>${esc(r.name)}${r.reg_code ? `<br><span class="sub">${nb(esc(r.reg_code))}</span>` : ''}</td><td>${esc(commName(r.community_id))}</td><td>${esc(r.surface)}</td>
+      <thead><tr><th>ที่</th><th>ชื่อถนน</th><th>ชุมชน</th><th>ผิวจราจร</th><th>ยาว (ม.)</th><th>กว้างผิว (ม.)</th><th>พื้นที่ (ตร.ม.)</th></tr></thead>
+      ${tbodyWithTotal(unpaved.map((r, i) => `<tr><td class="c">${i + 1}</td><td>${esc(r.name)}${r.reg_code ? `<br><span class="sub">${nb(esc(r.reg_code))}</span>` : ''}</td><td>${esc(commName(r.community_id))}</td><td>${esc(r.surface)}</td>
         <td class="n">${r.length_km != null ? fmt(r.length_km * 1000, 0) : '–'}</td><td class="n">${nb(fmtRange(r.surf_w_min, r.surf_w_max) || '–')}</td>
         <td class="n">${areaSqm(r) != null ? fmt(areaSqm(r), 0) : '–'}</td></tr>`),
         `<tr class="rp-total"><td></td><td colspan="5">รวมพื้นที่ (คำนวณได้ ${known.length} สาย จาก ${unpaved.length} สาย)</td><td class="n">${fmt(area, 0)}</td></tr>`)}</table>
@@ -160,7 +160,7 @@ function buildReport(o) {
     ];
     parts.push(`<section class="rp-keep">${H(`ความครบถ้วนของข้อมูลถนนสาธารณะ (${fmt(PUB.length)} สาย)`)}
       <table class="rp-t"><colgroup><col style="width:40%"><col style="width:20%"><col style="width:20%"><col style="width:20%"></colgroup>
-      <thead><tr><th>รายการข้อมูล</th><th>มีข้อมูล<br>(สาย)</th><th>ไม่มีข้อมูล<br>(สาย)</th><th>ร้อยละ<br>ที่มีข้อมูล</th></tr></thead>
+      <thead><tr><th>รายการข้อมูล</th><th>มีข้อมูล (สาย)</th><th>ไม่มีข้อมูล (สาย)</th><th>ร้อยละที่มีข้อมูล</th></tr></thead>
       <tbody>${items.map(([l, f]) => { const n = PUB.filter(f).length; return `<tr><td>${l}</td><td class="n">${n}</td><td class="n">${PUB.length - n}</td><td class="n">${pctTxt(n, PUB.length)}</td></tr>`; }).join('')}</tbody></table></section>`);
   }
 
@@ -170,7 +170,7 @@ function buildReport(o) {
       ${B.length ? `<table class="rp-t"><colgroup><col style="width:5%"><col style="width:46%"><col style="width:14%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"><col style="width:7%"></colgroup>
       <thead><tr><th rowspan="2">ที่</th><th rowspan="2">ชื่อสะพาน</th><th rowspan="2">ประเภท</th><th colspan="3">ขนาด (ม.)</th><th colspan="2">ทางเท้า (ม.)</th></tr>
       <tr><th>กว้าง</th><th>ยาว</th><th>สูง</th><th>ซ้าย</th><th>ขวา</th></tr></thead>
-      ${tbodyWithTotal(B.slice().sort((a, b) => a.seq - b.seq).map((x, i) => `<tr><td class="n">${i + 1}</td><td>${esc(x.name)}</td><td>${esc(x.bridge_type || '–')}</td><td class="n">${v1(x.width_m)}</td><td class="n">${v1(x.length_m)}</td><td class="n">${v1(x.height_m)}</td><td class="n">${v1(x.walk_l_m)}</td><td class="n">${v1(x.walk_r_m)}</td></tr>`),
+      ${tbodyWithTotal(B.slice().sort((a, b) => a.seq - b.seq).map((x, i) => `<tr><td class="c">${i + 1}</td><td>${esc(x.name)}</td><td>${esc(x.bridge_type || '–')}</td><td class="n">${v1(x.width_m)}</td><td class="n">${v1(x.length_m)}</td><td class="n">${v1(x.height_m)}</td><td class="n">${v1(x.walk_l_m)}</td><td class="n">${v1(x.walk_r_m)}</td></tr>`),
         `<tr class="rp-total"><td></td><td colspan="7">ความยาวรวม ${fmt(bLen, 1)} เมตร</td></tr>`)}</table>` : '<p class="rp-note">ไม่มีข้อมูล</p>'}</section>`);
   }
 
@@ -178,7 +178,7 @@ function buildReport(o) {
     parts.push(`<section class="rp-keep">${H(`ข้อมูลสวนสาธารณะ (${fmt(P.length)} แห่ง)`)}
       ${P.length ? `<table class="rp-t"><colgroup><col style="width:7%"><col style="width:51%"><col style="width:24%"><col style="width:18%"></colgroup>
       <thead><tr><th>ที่</th><th>ชื่อสวนสาธารณะ</th><th>พื้นที่ (ตร.ม.)</th><th>พื้นที่ (ไร่)</th></tr></thead>
-      <tbody>${P.slice().sort((a, b) => a.seq - b.seq).map((x, i) => `<tr><td class="n">${i + 1}</td><td>${esc(x.name)}</td><td class="n">${x.area_sqm != null ? fmt(x.area_sqm, 0) : '–'}</td><td class="n">${x.area_sqm != null ? fmt(x.area_sqm / 1600, 1) : '–'}</td></tr>`).join('')}
+      <tbody>${P.slice().sort((a, b) => a.seq - b.seq).map((x, i) => `<tr><td class="c">${i + 1}</td><td>${esc(x.name)}</td><td class="n">${x.area_sqm != null ? fmt(x.area_sqm, 0) : '–'}</td><td class="n">${x.area_sqm != null ? fmt(x.area_sqm / 1600, 1) : '–'}</td></tr>`).join('')}
       <tr class="rp-total"><td></td><td>รวม</td><td class="n">${fmt(pArea, 0)}</td><td class="n">${fmt(pArea / 1600, 1)}</td></tr></tbody></table>` : '<p class="rp-note">ไม่มีข้อมูล</p>'}</section>`);
   }
 
@@ -187,14 +187,14 @@ function buildReport(o) {
     let n = 0;
     const body = comms.map((c) => {
       const rs = R.filter((r) => r.community_id === c.id).sort((a, b) => a.seq - b.seq);
-      const rows = rs.map((r) => `<tr><td class="n">${++n}</td><td>${esc(r.name)}${r.reg_code ? `<br><span class="sub">${nb(esc(r.reg_code))}</span>` : ''}</td><td>${esc(r.land_type || '–')}</td><td>${esc(r.surface || '–')}</td>
+      const rows = rs.map((r) => `<tr><td class="c">${++n}</td><td>${esc(r.name)}${r.reg_code ? `<br><span class="sub">${nb(esc(r.reg_code))}</span>` : ''}</td><td>${esc(r.land_type || '–')}</td><td>${esc(r.surface || '–')}</td>
         <td class="n">${r.length_km != null ? fmt(r.length_km * 1000, 0) : '–'}</td><td class="n">${nb(fmtRange(r.surf_w_min, r.surf_w_max) || '–')}</td></tr>`);
       // หัวชุมชน + แถวแรก ห้ามแยกหน้ากัน
       return `<tbody class="rp-tail"><tr class="rp-grp"><td colspan="6">ชุมชน${esc(c.name)} (${rs.length} สาย)</td></tr>${rows[0]}</tbody><tbody>${rows.slice(1).join('')}</tbody>`;
     }).join('');
     parts.push(`<section class="rp-appendix">${H(`รายชื่อถนนทั้งหมดในระบบ (${fmt(R.length)} สาย)`)}
       <table class="rp-t"><colgroup><col style="width:5%"><col style="width:42%"><col style="width:16%"><col style="width:19%"><col style="width:8%"><col style="width:10%"></colgroup>
-      <thead><tr><th>ที่</th><th>ชื่อถนน</th><th>ที่ดิน</th><th>ผิวจราจร</th><th>ยาว<br>(ม.)</th><th>กว้าง<br>ผิว (ม.)</th></tr></thead>
+      <thead><tr><th>ที่</th><th>ชื่อถนน</th><th>ที่ดิน</th><th>ผิวจราจร</th><th>ยาว (ม.)</th><th>กว้างผิว (ม.)</th></tr></thead>
       ${body}</table>
       <p class="rp-note">หมายเหตุ ตัวเลขใต้ชื่อถนนคือรหัสทะเบียนทาง เครื่องหมาย "–" คือไม่มีข้อมูลในระบบ</p></section>`);
   }
