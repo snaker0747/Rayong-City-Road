@@ -2,10 +2,18 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f5e6e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RCRNIS">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <title>RCRNIS | ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง</title>
   <meta name="description" content="ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (Rayong City Road Network Information System)">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f5e6e'/><path d='M12 4 9 28M20 4l3 24' stroke='white' stroke-width='2.5'/><path d='M16 6v4M16 14v4M16 22v4' stroke='%23ffd166' stroke-width='2.5'/></svg>">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
@@ -25,13 +33,14 @@
     <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" hidden>
-      <a href="#dashboard" data-view="dashboard">ภาพรวม</a>
-      <a href="#roads" data-view="roads">ถนน</a>
-      <a href="#map" data-view="map">แผนที่</a>
-      <a href="#bridges" data-view="bridges">สะพาน</a>
-      <a href="#parks" data-view="parks">สวนสาธารณะ</a>
-      <a href="#history" data-view="history" data-role="admin" hidden>ประวัติ</a>
-      <a href="#users" data-view="users" data-role="admin" hidden>ผู้ใช้</a>
+      <a href="#dashboard" data-view="dashboard"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/></svg><span>ภาพรวม</span></a>
+      <a href="#roads" data-view="roads"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3 5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></svg><span>ถนน</span></a>
+      <a href="#map" data-view="map"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14"/></svg><span>แผนที่</span></a>
+      <a href="#bridges" data-view="bridges"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 18h20M4 18v-6M20 18v-6M2 12c4-6 16-6 20 0M8 18v-3.5M12 18v-4.5M16 18v-3.5"/></svg><span>สะพาน</span></a>
+      <a href="#parks" data-view="parks"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22v-7M12 15l-4 0a5 5 0 1 1 8-6 4 4 0 0 1-4 6z"/></svg><span><span class="lg">สวนสาธารณะ</span><span class="sm">สวน</span></span></a>
+      <a href="#history" data-view="history" data-role="admin" hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg><span>ประวัติ</span></a>
+      <a href="#users" data-view="users" data-role="admin" hidden><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM22 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8"/></svg><span>ผู้ใช้</span></a>
+      <button type="button" class="tab-more" id="tab-more" aria-label="เมนูเพิ่มเติม"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>เมนู</span></button>
     </nav>
   </header>
 

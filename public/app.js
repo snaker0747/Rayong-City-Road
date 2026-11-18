@@ -144,7 +144,14 @@ function toast(msg, isError = false) {
 
 async function api(path, opts = {}) {
   const headers = { ...(opts.body ? { 'content-type': 'application/json' } : {}), ...(opts.headers || {}) };
-  const res = await fetch('/api/' + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  let res;
+  try {
+    res = await fetch('/api/' + path, { ...opts, headers, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  } catch {
+    const err = new Error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ต');
+    err.status = 0;
+    throw err;
+  }
   if (res.status === 304) return { notModified: true };
   const data = res.headers.get('content-type')?.includes('json') ? await res.json() : null;
   if (res.status === 401 && !path.startsWith('auth/') && S.me) {
@@ -183,8 +190,11 @@ function route() {
   const link = $(`#tabs a[data-view="${v}"]`);
   if (link?.hidden) v = 'dashboard';
   $$('#tabs a').forEach((a) => a.classList.toggle('active', a.dataset.view === v));
+  const changed = route.last !== v;
+  route.last = v;
   $$('.view').forEach((s) => s.classList.toggle('active', s.id === 'view-' + v));
   VIEWS[v]();
+  if (changed) window.scrollTo(0, 0);
 }
 
 // ---------------------------------------------------------------- dashboard
@@ -309,34 +319,48 @@ function filteredRoads() {
 
 function filterBar(prefix) {
   const f = S.filter;
+  const active = ['community', 'land', 'surf', 'reg'].filter((k) => f[k]).length;
   const opt = (v, label, cur) => `<option value="${esc(v)}" ${String(v) === String(cur) ? 'selected' : ''}>${esc(label)}</option>`;
   return `
-    <input type="search" id="${prefix}-q" placeholder="ค้นหาชื่อถนน / รหัสทะเบียน / หมายเหตุ" value="${esc(f.q)}">
+    <div class="search-row"><input type="search" id="${prefix}-q" placeholder="ค้นหาชื่อถนน / รหัสทะเบียน / หมายเหตุ" value="${esc(f.q)}" enterkeyhint="search">
+    <button type="button" class="filter-toggle ${active ? 'has' : ''}" data-ft="${prefix}">ตัวกรอง${active ? ` (${active})` : ''}</button></div>
+    <div class="filter-more" id="${prefix}-more">
     <select id="${prefix}-community">${opt('', 'ทุกชุมชน', f.community)}${S.communities.map((c) => opt(c.id, c.name, f.community)).join('')}</select>
     <select id="${prefix}-land">${opt('', 'ทุกประเภทที่ดิน', f.land)}${[...LAND_GROUPS, 'อื่นๆ'].map((l) => opt(l, l, f.land)).join('')}</select>
     <select id="${prefix}-surf">${opt('', 'ทุกผิวจราจร', f.surf)}${SURF_GROUPS.map((g) => opt(g.key, g.key, f.surf)).join('')}</select>
-    <select id="${prefix}-reg">${opt('', 'สถานะทะเบียน: ทั้งหมด', f.reg)}${opt('yes', 'ขึ้นทะเบียนแล้ว', f.reg)}${opt('no', 'ยังไม่ขึ้นทะเบียน', f.reg)}</select>`;
+    <select id="${prefix}-reg">${opt('', 'สถานะทะเบียน: ทั้งหมด', f.reg)}${opt('yes', 'ขึ้นทะเบียนแล้ว', f.reg)}${opt('no', 'ยังไม่ขึ้นทะเบียน', f.reg)}</select>
+    ${active ? `<button type="button" class="ghost small" data-clear="${prefix}">ล้างตัวกรอง</button>` : ''}</div>`;
 }
 
 function bindFilters(prefix, onChange) {
   const map = { q: 'q', community: 'community', land: 'land', surf: 'surf', reg: 'reg' };
+  const sync = () => {
+    const n = ['community', 'land', 'surf', 'reg'].filter((k) => S.filter[k]).length;
+    const t = $(`[data-ft="${prefix}"]`);
+    if (t) { t.textContent = 'ตัวกรอง' + (n ? ` (${n})` : ''); t.classList.toggle('has', !!n); }
+  };
   for (const [id, k] of Object.entries(map)) {
     const el = $(`#${prefix}-${id}`);
-    el?.addEventListener(id === 'q' ? 'input' : 'change', () => { S.filter[k] = el.value; onChange(); });
+    el?.addEventListener(id === 'q' ? 'input' : 'change', () => { S.filter[k] = el.value; sync(); onChange(); });
   }
+  $(`[data-ft="${prefix}"]`)?.addEventListener('click', () => $(`#${prefix}-more`).classList.toggle('open'));
+  $(`[data-clear="${prefix}"]`)?.addEventListener('click', () => {
+    S.filter = { ...S.filter, community: '', land: '', surf: '', reg: '' };
+    route();
+  });
 }
 
 function renderRoads() {
   const el = $('#view-roads');
   el.innerHTML = `
     <div class="page-head"><div><h2>รายชื่อถนน</h2><div class="muted small">คลิกแถวเพื่อดูรายละเอียด แก้ไข หรือดูประวัติ</div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="ph-actions">
         ${isAdmin() ? `<label class="btn"><input type="checkbox" id="show-del" style="width:auto" ${S.showDeleted ? 'checked' : ''}> แสดงรายการที่ซ่อน</label>` : ''}
         <button id="btn-export">ส่งออก Excel</button>
         ${canEdit() ? '<button class="primary" id="btn-add">+ เพิ่มถนน</button>' : ''}
       </div></div>
     <div class="filters">${filterBar('rf')}<span class="count" id="rf-count"></span></div>
-    <div class="table-wrap"><table><thead><tr>
+    <div class="table-wrap"><table class="roads-table"><thead><tr>
       <th class="num">ลำดับ</th><th>รหัสทะเบียน</th><th>ชื่อถนน</th><th>ชุมชน</th><th>ประเภทที่ดิน</th><th>ผิวจราจร</th>
       <th class="num">เขตทาง (ม.)</th><th class="num">กว้าง (ม.)</th><th class="num">ระยะ (กม.)</th><th class="num">โคม LED</th>
     </tr></thead><tbody id="rf-body"></tbody></table></div>`;
@@ -344,11 +368,11 @@ function renderRoads() {
     const rows = filteredRoads();
     $('#rf-count').textContent = `${fmt(rows.length)} สาย · ${fmt(rows.reduce((a, r) => a + (r.length_km || 0), 0), 2)} กม.`;
     $('#rf-body').innerHTML = rows.map((r) => `<tr class="click ${r.is_deleted ? 'deleted' : ''}" data-id="${r.id}">
-      <td class="num">${r.seq ?? ''}</td><td class="code">${r.reg_code ? esc(r.reg_code) : '<span class="pill no">ยังไม่ขึ้น</span>'}</td>
-      <td>${esc(r.name)}</td><td>${esc(commName(r.community_id))}</td><td>${esc(r.land_type)}</td>
-      <td><span class="dot" style="background:${surfColor(r.surface)}"></span>${esc(r.surface)}</td>
-      <td class="num">${fmtRange(r.row_w_min, r.row_w_max)}</td><td class="num">${fmtRange(r.surf_w_min, r.surf_w_max)}</td>
-      <td class="num">${fmt(r.length_km, 3)}</td><td class="num">${r.lamp_led ?? ''}</td></tr>`).join('')
+      <td class="num c-seq">${r.seq ?? ''}</td><td class="code c-code">${r.reg_code ? esc(r.reg_code) : '<span class="pill no">ยังไม่ขึ้น</span>'}</td>
+      <td class="c-name">${esc(r.name)}</td><td class="c-comm">${esc(commName(r.community_id))}</td><td class="c-land">${esc(r.land_type)}</td>
+      <td class="c-surf"><span class="dot" style="background:${surfColor(r.surface)}"></span>${esc(r.surface)}</td>
+      <td class="num c-m" data-label="เขตทาง">${fmtRange(r.row_w_min, r.row_w_max)}</td><td class="num c-m" data-label="กว้าง">${fmtRange(r.surf_w_min, r.surf_w_max)}</td>
+      <td class="num c-m" data-label="ระยะ กม.">${fmt(r.length_km, 3)}</td><td class="num c-m c-led" data-label="LED">${r.lamp_led ?? ''}</td></tr>`).join('')
       || '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">ไม่พบข้อมูลตามเงื่อนไข</td></tr>';
   };
   bindFilters('rf', draw);
@@ -383,15 +407,16 @@ function renderSimple(table) {
   const rows = S[table];
   el.innerHTML = `
     <div class="page-head"><div><h2>${FORMS[table].title}</h2><div class="muted small">${fmt(rows.filter((r) => !r.is_deleted).length)} รายการ · คลิกแถวเพื่อดูรายละเอียด</div></div>
-      <div style="display:flex;gap:8px">${canEdit() ? `<button class="primary" id="add-${table}">+ เพิ่ม${FORMS[table].title}</button>` : ''}</div></div>
-    <div class="table-wrap"><table><thead><tr>${cfg.head.map((h, i) => `<th class="${cfg.num.includes(i) ? 'num' : ''}">${h}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map((r) => `<tr class="click ${r.is_deleted ? 'deleted' : ''}" data-id="${r.id}">${cfg.row(r).map((c, i) => `<td class="${cfg.num.includes(i) ? 'num' : ''}">${c ?? ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      <div class="ph-actions">${canEdit() ? `<button class="primary" id="add-${table}">+ เพิ่ม${FORMS[table].title}</button>` : ''}</div></div>
+    <div class="table-wrap"><table class="stack"><thead><tr>${cfg.head.map((h, i) => `<th class="${cfg.num.includes(i) ? 'num' : ''}">${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr class="click ${r.is_deleted ? 'deleted' : ''}" data-id="${r.id}">${cfg.row(r).map((c, i) => `<td class="${cfg.num.includes(i) ? 'num' : ''} ${i === 1 ? 'st-title' : ''}" data-label="${cfg.head[i]}">${c ?? ''}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   $('tbody', el).addEventListener('click', (e) => { const tr = e.target.closest('tr[data-id]'); if (tr) openDetail(table, +tr.dataset.id); });
   $(`#add-${table}`)?.addEventListener('click', () => openEdit(table, null));
 }
 
 // ---------------------------------------------------------------- map
 let MAP = null, roadLayer = null, parkLayer = null, bridgeLayer = null;
+const COARSE = matchMedia('(pointer: coarse)').matches;
 
 function baseLayer() {
   return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -403,7 +428,7 @@ function renderMap() {
   $('#map-tools').innerHTML = `${filterBar('mf')}<span class="count" id="mf-count"></span>`;
   bindFilters('mf', drawMarkers);
   if (!MAP) {
-    MAP = L.map('map', { preferCanvas: true }).setView([12.68, 101.27], 14);
+    MAP = L.map('map', { preferCanvas: true, tap: true }).setView([12.68, 101.27], 14);
     const street = baseLayer().addTo(MAP);
     const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19, attribution: 'Imagery &copy; Esri',
@@ -421,6 +446,34 @@ function renderMap() {
       return d;
     };
     legend.addTo(MAP);
+    // ปุ่ม "ตำแหน่งของฉัน" สำหรับใช้หน้างาน
+    let meMarker = null;
+    const loc = L.control({ position: 'topleft' });
+    loc.onAdd = () => {
+      const b = L.DomUtil.create('button', 'locate-btn');
+      b.type = 'button';
+      b.title = 'ตำแหน่งของฉัน';
+      b.setAttribute('aria-label', 'ตำแหน่งของฉัน');
+      b.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+      L.DomEvent.disableClickPropagation(b);
+      b.addEventListener('click', () => {
+        if (!navigator.geolocation) return toast('อุปกรณ์นี้ไม่รองรับ GPS', true);
+        b.classList.add('busy');
+        navigator.geolocation.getCurrentPosition((p) => {
+          b.classList.remove('busy');
+          const ll = [p.coords.latitude, p.coords.longitude];
+          if (meMarker) meMarker.remove();
+          meMarker = L.layerGroup([
+            L.circle(ll, { radius: p.coords.accuracy, color: '#1d5fa8', weight: 1, fillOpacity: 0.1 }),
+            L.circleMarker(ll, { radius: 8, color: '#fff', weight: 3, fillColor: '#1d5fa8', fillOpacity: 1 }),
+          ]).addTo(MAP);
+          MAP.setView(ll, 17);
+        }, (err) => { b.classList.remove('busy'); toast('หาตำแหน่งไม่ได้: ' + err.message, true); },
+        { enableHighAccuracy: true, timeout: 15000 });
+      });
+      return b;
+    };
+    loc.addTo(MAP);
     MAP.on('popupopen', (e) => {
       const b = e.popup.getElement().querySelector('[data-open]');
       if (b) b.addEventListener('click', () => { const [t, id] = b.dataset.open.split(':'); openDetail(t, +id); });
@@ -437,7 +490,7 @@ function drawMarkers() {
   $('#mf-count').textContent = `แสดง ${fmt(rows.length)} สาย`;
   for (const r of rows) {
     L.circleMarker([r.lat, r.lng], {
-      radius: 7, weight: r.reg_code ? 1 : 2.5, color: r.reg_code ? '#fff' : '#d62828',
+      radius: COARSE ? 9 : 7, weight: r.reg_code ? 1 : 2.5, color: r.reg_code ? '#fff' : '#d62828',
       fillColor: surfColor(r.surface), fillOpacity: 0.9,
     }).bindPopup(`<b>${esc(r.name)}</b><br>${r.reg_code ? esc(r.reg_code) : '<span class="pill no">ยังไม่ขึ้นทะเบียน</span>'}<br>
       ชุมชน${esc(commName(r.community_id))} · ${esc(r.land_type)}<br>ผิว${esc(r.surface)} ${r.length_km ? '· ' + fmt(r.length_km, 3) + ' กม.' : ''}<br>
@@ -454,13 +507,31 @@ function drawMarkers() {
 }
 
 // ---------------------------------------------------------------- detail modal
-function modal(html) {
+function modal(html, opts = {}) {
   const d = $('#modal');
+  d.classList.toggle('sheet', !!opts.sheet);
   d.innerHTML = html;
-  if (!d.open) d.showModal();
+  if (!d.open) {
+    d.showModal();
+    history.pushState({ modal: true }, '');
+  }
+  d.querySelector('.m-body')?.scrollTo(0, 0);
   $$('[data-close]', d).forEach((b) => b.addEventListener('click', () => d.close()));
   return d;
 }
+// ปิดหน้าต่างด้วยปุ่มย้อนกลับของมือถือ
+window.addEventListener('popstate', () => {
+  const d = $('#modal');
+  if (d.open && !d.dataset.locked) d.close();
+  else if (d.open && d.dataset.locked) history.pushState({ modal: true }, '');
+});
+$('#modal').addEventListener('close', () => {
+  if (history.state?.modal) history.back();
+});
+// แตะพื้นที่มืดนอกหน้าต่างเพื่อปิด
+$('#modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget && !e.currentTarget.dataset.locked) e.currentTarget.close();
+});
 
 function openDetail(table, id) {
   const rec = S[table].find((r) => r.id === id);
@@ -684,11 +755,11 @@ async function renderUsers() {
   const load = async () => {
     const { data } = await api('users');
     const locked = (u) => u.locked_until && new Date(u.locked_until) > new Date();
-    $('#u-list').innerHTML = `<table><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อที่แสดง</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th></th></tr></thead><tbody>${
-      data.map((u) => `<tr><td><b>${esc(u.username)}</b></td><td>${esc(u.display_name)}</td><td><span class="role ${u.role}">${ROLE_TH[u.role] || u.role}</span></td>
-        <td>${!u.active ? '<span class="pill no">ระงับ</span>' : locked(u) ? '<span class="pill no">ล็อกชั่วคราว</span>' : u.must_change_pw ? '<span class="pill">รอตั้งรหัสใหม่</span>' : '<span class="pill yes">ใช้งาน</span>'}</td>
-        <td class="small">${u.last_login_at ? fmtTime(u.last_login_at) : '<span class="muted">ยังไม่เคยเข้า</span>'}</td>
-        <td><button data-u="${esc(JSON.stringify(u))}">แก้ไข</button></td></tr>`).join('')}</tbody></table>`;
+    $('#u-list').innerHTML = `<table class="stack"><thead><tr><th>ชื่อผู้ใช้</th><th>ชื่อที่แสดง</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th></th></tr></thead><tbody>${
+      data.map((u) => `<tr><td class="st-title" data-label="ชื่อผู้ใช้"><b>${esc(u.username)}</b></td><td data-label="ชื่อที่แสดง">${esc(u.display_name)}</td><td data-label="สิทธิ์"><span class="role ${u.role}">${ROLE_TH[u.role] || u.role}</span></td>
+        <td data-label="สถานะ">${!u.active ? '<span class="pill no">ระงับ</span>' : locked(u) ? '<span class="pill no">ล็อกชั่วคราว</span>' : u.must_change_pw ? '<span class="pill">รอตั้งรหัสใหม่</span>' : '<span class="pill yes">ใช้งาน</span>'}</td>
+        <td class="small" data-label="เข้าใช้ล่าสุด">${u.last_login_at ? fmtTime(u.last_login_at) : '<span class="muted">ยังไม่เคยเข้า</span>'}</td>
+        <td data-label=""><button data-u="${esc(JSON.stringify(u))}">แก้ไข</button></td></tr>`).join('')}</tbody></table>`;
     $$('[data-u]', el).forEach((b) => b.addEventListener('click', () => userForm(JSON.parse(b.dataset.u))));
   };
   const userForm = (u) => {
@@ -788,7 +859,11 @@ function showChangePassword(forced) {
         <div class="field"><label>ยืนยันรหัสผ่านใหม่</label><input name="confirm" type="password" autocomplete="new-password" required></div>
       </div></div>
     <div class="m-foot">${forced ? '<button type="button" id="pw-logout">ออกจากระบบ</button>' : '<button type="button" data-close>ยกเลิก</button>'}<button class="primary" type="submit">บันทึกรหัสผ่าน</button></div></form>`);
-  if (forced) d.addEventListener('cancel', (e) => e.preventDefault(), { once: false });
+  if (forced) {
+    d.dataset.locked = '1';
+    d.addEventListener('cancel', (e) => e.preventDefault());
+    d.addEventListener('close', () => delete d.dataset.locked, { once: true });
+  }
   $('#pw-logout', d)?.addEventListener('click', logout);
   $('#pw-form', d).addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -853,6 +928,57 @@ async function exportBackup() {
   await refreshAll();
 }
 
+// ---------------------------------------------------------------- เมนูเพิ่มเติม (มือถือ) / ติดตั้งแอป
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; });
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function showInstallHelp() {
+  if (installPrompt) {
+    installPrompt.prompt();
+    installPrompt.userChoice.finally(() => { installPrompt = null; });
+    return;
+  }
+  modal(`<div class="m-head"><h2>ติดตั้ง RCRNIS เป็นแอป</h2><button class="ghost" data-close aria-label="ปิด">✕</button></div>
+    <div class="m-body">${isIOS()
+      ? '<ol class="steps"><li>เปิดเว็บนี้ด้วย <b>Safari</b></li><li>แตะปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น)</li><li>เลือก <b>เพิ่มไปยังหน้าจอโฮม</b> แล้วแตะ <b>เพิ่ม</b></li></ol>'
+      : '<ol class="steps"><li>เปิดเว็บนี้ด้วย <b>Chrome</b> หรือ <b>Edge</b></li><li>แตะเมนู <b>⋮</b> มุมขวาบน</li><li>เลือก <b>ติดตั้งแอป</b> หรือ <b>เพิ่มลงในหน้าจอหลัก</b></li></ol>'}
+      <p class="muted small">ไอคอน RCRNIS จะอยู่บนหน้าจอโฮม เปิดแบบเต็มจอเหมือนแอปทั่วไป</p></div>
+    <div class="m-foot"><button class="primary" data-close>เข้าใจแล้ว</button></div>`, { sheet: true });
+}
+
+function showMoreMenu() {
+  const item = (icon, label, attr) => `<button class="menu-item" ${attr}><span class="mi-ico">${icon}</span>${label}</button>`;
+  const d = modal(`<div class="m-head"><div><h2>${esc(S.me.name)}</h2><span class="role ${S.me.role}">${ROLE_TH[S.me.role]}</span></div><button class="ghost" data-close aria-label="ปิด">✕</button></div>
+    <div class="m-body menu-list">
+      ${isAdmin() ? item('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/></svg>', 'ประวัติการแก้ไข', 'data-go="history"') + item('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM22 19v-1a4 4 0 0 0-3-3.9M16 3.1a3.5 3.5 0 0 1 0 6.8"/></svg>', 'จัดการผู้ใช้งาน', 'data-go="users"') : ''}
+      ${!isStandalone() ? item('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3M10 18h4"/></svg>', 'ติดตั้งเป็นแอปบนเครื่องนี้', 'id="mm-install"') : ''}
+      ${item('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>', 'เปลี่ยนรหัสผ่าน', 'id="mm-pw"')}
+      ${item('<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>', 'ออกจากระบบ', 'id="mm-out" class="danger"')}
+    </div>`, { sheet: true });
+  $$('[data-go]', d).forEach((b) => b.addEventListener('click', () => { const v = b.dataset.go; d.close(); setTimeout(() => { location.hash = v; }, 50); }));
+  $('#mm-install', d)?.addEventListener('click', () => { d.close(); setTimeout(showInstallHelp, 50); });
+  $('#mm-pw', d).addEventListener('click', () => { d.close(); setTimeout(() => showChangePassword(false), 50); });
+  $('#mm-out', d).addEventListener('click', () => { d.close(); logout(); });
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      // มีเวอร์ชันใหม่ -> แจ้งให้โหลดใหม่
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw?.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) toast('มีเวอร์ชันใหม่ ปิดแล้วเปิดแอปใหม่เพื่ออัปเดต');
+        });
+      });
+    }).catch(() => {});
+  });
+}
+window.addEventListener('offline', () => toast('ไม่มีอินเทอร์เน็ต ข้อมูลอาจไม่เป็นปัจจุบัน', true));
+window.addEventListener('online', () => { toast('กลับมาออนไลน์แล้ว'); if (S.me) refreshAll().then(route).catch(() => {}); });
+
 // ---------------------------------------------------------------- boot
 let booted = false;
 async function start() {
@@ -866,6 +992,7 @@ async function start() {
   $('#me').innerHTML = `<span>${esc(S.me.name)}</span><span class="role ${S.me.role}">${ROLE_TH[S.me.role]}</span>
     <button class="ghost me-btn" id="btn-pw" title="เปลี่ยนรหัสผ่าน">เปลี่ยนรหัส</button><button class="ghost me-btn" id="btn-logout">ออกจากระบบ</button>`;
   $('#btn-pw').addEventListener('click', () => showChangePassword(false));
+  $('#tab-more').onclick = showMoreMenu;
   $('#btn-logout').addEventListener('click', logout);
   if (S.me.must_change_pw) { $('#loading')?.remove(); return showChangePassword(true); }
   try {

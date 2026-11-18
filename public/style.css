@@ -163,25 +163,198 @@ dl.detail dd { margin: 0; padding: 5px 0; border-bottom: 1px dashed var(--line);
 
 .footer { text-align: center; font-size: 12px; color: var(--muted); padding: 14px; }
 
-@media (max-width: 760px) {
-  main { padding: 12px; }
-  .banner { padding: 8px 12px; }
-  .brand .full { display: none; }
-  .brand .short { display: inline; }
-  .brand svg { width: 32px; height: 32px; }
-  .me span:first-child { display: none; }
-  .tabs { padding: 6px 12px; }
-  .two { grid-template-columns: 1fr; }
-  .filters input[type=search], .map-tools input[type=search] { width: 100%; }
-  .count { margin-left: 0; }
-  dl.detail { grid-template-columns: 130px 1fr; }
-  .comp-row { grid-template-columns: 110px 1fr 48px; }
-}
-
 /* login */
 .login-card { max-width: 400px; margin: 60px auto; padding: 28px; }
 .me-btn { color: #fff; font-size: 13px; padding: 4px 10px; border: 1px solid rgba(255,255,255,.35) !important; }
 .me-btn:hover { background: rgba(255,255,255,.12); }
-@media (max-width: 760px) { .me-btn#btn-pw { display: none; } }
 .remember { display: flex; align-items: center; gap: 8px; margin: 14px 0 0; font-size: 14px; cursor: pointer; user-select: none; }
 .remember input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+
+/* ============================================================ responsive / touch */
+html { -webkit-text-size-adjust: 100%; }
+body { -webkit-tap-highlight-color: rgba(15, 94, 110, .15); }
+.ti { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.tabs a { display: inline-flex; align-items: center; gap: 6px; }
+.tabs .sm, .tab-more { display: none; }
+.ph-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tabs, .tab-more { -webkit-tap-highlight-color: transparent; }
+.search-row { display: flex; gap: 8px; align-items: center; }
+.filter-more { display: contents; }
+.filter-toggle { display: none; }
+.filter-toggle.has { border-color: var(--brand); color: var(--brand); background: var(--brand-2); }
+.locate-btn { width: 34px; height: 34px; border-radius: 4px; border: 2px solid rgba(0,0,0,.2); background: #fff; color: #333;
+  display: grid; place-items: center; cursor: pointer; padding: 0; }
+.locate-btn.busy { color: var(--brand); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .4; } }
+.menu-list { display: flex; flex-direction: column; gap: 4px; }
+.menu-item { width: 100%; justify-content: flex-start; gap: 14px; padding: 14px 12px; border: none; border-radius: 10px; font-size: 16px; background: transparent; }
+.menu-item:hover, .menu-item:active { background: var(--bg); }
+.menu-item.danger { color: var(--danger); }
+.mi-ico { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--brand-2); color: var(--brand); }
+.menu-item.danger .mi-ico { background: #fde9e7; color: var(--danger); }
+.steps { padding-left: 22px; line-height: 2; }
+.m-head .role { margin-top: 4px; display: inline-block; }
+
+/* แท็บเล็ต: ซ่อนคอลัมน์ที่ไม่จำเป็น */
+@media (max-width: 1100px) {
+  .brand-title { font-size: 15px; }
+}
+
+/* อุปกรณ์จอสัมผัส: ปุ่มและช่องกรอกใหญ่ขึ้น แตะง่าย และ iOS ไม่ซูมอัตโนมัติ */
+@media (pointer: coarse) {
+  button, .btn, select, input:not([type=checkbox]):not([type=radio]) { min-height: 44px; }
+  input, select, textarea { font-size: 16px; }
+  .tabs a { padding: 10px 14px; }
+  td, th { padding-top: 10px; padding-bottom: 10px; }
+  .leaflet-popup-content button { min-height: 40px; padding: 6px 14px; }
+  .leaflet-touch .leaflet-bar a { width: 40px; height: 40px; line-height: 40px; }
+  .locate-btn { width: 44px; height: 44px; }
+}
+
+/* ---------------------------------------------------------------- มือถือ */
+@media (max-width: 760px) {
+  body { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  main { padding: 12px; }
+  .banner { padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
+  .brand .full { display: none; }
+  .brand .short { display: inline; }
+  .brand svg { width: 32px; height: 32px; }
+  .brand-sub { font-size: 12px; }
+  .me { display: none; }
+  .footer { padding-bottom: 20px; }
+  h2 { font-size: 18px; }
+
+  /* เมนูล่างแบบแอป */
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1100; display: flex; gap: 0; padding: 0 0 env(safe-area-inset-bottom);
+    background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -2px 12px rgba(0,0,0,.06); overflow: visible; }
+  .tabs[hidden] { display: none !important; }
+  .tabs a, .tab-more { flex: 1 1 0; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 2px 6px; min-height: 58px;
+    font-size: 11px; font-weight: 500; border-radius: 0; color: var(--muted); border: none; background: none; display: flex; align-items: center; }
+  .tabs a.active { background: none; color: var(--brand); }
+  .tabs a.active .ti { stroke-width: 2.3; }
+  .tabs a[data-role] { display: none !important; }
+  .tabs .ti { width: 24px; height: 24px; }
+  .tabs .lg { display: none; }
+  .tabs .sm { display: inline; }
+
+  /* หัวหน้า */
+  .page-head { align-items: stretch; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+  .ph-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ph-actions > * { justify-content: center; }
+  .ph-actions .primary { grid-column: 1 / -1; order: -1; }
+  .ph-actions > :only-child { grid-column: 1 / -1; }
+  .page-head > button { justify-content: center; }
+
+  /* ตัวกรอง: ช่องค้นหา + ปุ่มตัวกรอง พับ/กางได้ */
+  .filters, .map-tools { flex-direction: column; align-items: stretch; gap: 8px; }
+  .search-row input[type=search] { flex: 1; width: auto !important; min-width: 0; }
+  .filter-toggle { display: inline-flex; white-space: nowrap; }
+  .filter-more { display: none; }
+  .filter-more.open { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .filter-more select { width: 100% !important; min-width: 0; }
+  .filter-more [data-clear] { grid-column: 1 / -1; justify-content: center; }
+  .count { margin-left: 0; font-size: 13px; }
+
+  /* รายการถนนแบบการ์ด */
+  .table-wrap { max-height: none; overflow: visible; border: none; background: none; }
+
+  /* ตารางทั่วไปแบบการ์ด (สะพาน สวน ผู้ใช้) */
+  table.stack, table.stack tbody { display: block; }
+  table.stack thead { display: none; }
+  table.stack tr { display: block; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
+  table.stack td { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border: none; text-align: right; }
+  table.stack td::before { content: attr(data-label); color: var(--muted); font-size: 13px; text-align: left; flex: none; }
+  table.stack td.st-title { font-weight: 600; font-size: 15px; text-align: left; padding-bottom: 6px; }
+  table.stack td.st-title::before, table.stack td[data-label=""]::before { content: none; }
+  table.stack td[data-label=""] { justify-content: flex-end; }
+
+  /* ภาพรวม */
+  .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi .value { font-size: 24px; }
+  .card { padding: 14px; }
+  .two { grid-template-columns: 1fr; }
+  .card:has(.matrix) { overflow-x: auto; }
+  .matrix th, .matrix td { padding: 8px 6px; font-size: 13px; }
+  .comp-row { grid-template-columns: 112px 1fr 44px; font-size: 13px; }
+  .card .table-wrap { overflow-x: auto; }
+  .card .table-wrap table { font-size: 13px; }
+
+  /* แผนที่ */
+  #map { height: calc(100dvh - 205px - env(safe-area-inset-bottom)); min-height: 320px; border-radius: 10px; }
+  .legend { font-size: 12px; line-height: 1.6; padding: 6px 10px; }
+
+  /* หน้าต่างแบบเต็มจอ */
+  dialog { width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+  dialog[open] { display: flex; flex-direction: column; }
+  dialog > form { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .m-head { padding: calc(12px + env(safe-area-inset-top)) 16px 12px; }
+  .m-body { flex: 1; max-height: none; padding: 14px 16px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .m-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .m-foot > button { flex: 1; justify-content: center; }
+  .m-foot .left { margin-right: 0; flex-basis: 100%; flex-wrap: wrap; }
+  .m-foot .left > button { flex: 1; justify-content: center; }
+  dl.detail { grid-template-columns: 120px 1fr; font-size: 14px; }
+  .fields { grid-template-columns: 1fr 1fr; }
+  .fields .field:has(.range), .fields .field.wide, .fields .field:has(textarea) { grid-column: 1 / -1; }
+  .minimap { height: 220px; }
+
+  .login-card { margin: 20px auto; padding: 22px; }
+  .toast { bottom: calc(76px + env(safe-area-inset-bottom)); max-width: calc(100% - 32px); text-align: center; }
+}
+
+@media (max-width: 380px) {
+  .fields { grid-template-columns: 1fr; }
+  .kpi .value { font-size: 21px; }
+}
+
+/* ---------------------------------------------------------------- รายการถนนแบบการ์ด (แท็บเล็ตและมือถือ) */
+@media (max-width: 1024px) {
+  .me span:first-child { display: none; }
+  #view-roads .table-wrap { max-height: none; overflow: visible; border: none; background: none; }
+  .roads-table, .roads-table tbody { display: block; }
+  .roads-table thead { display: none; }
+  .roads-table tr { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 8px; background: #fff; border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; align-content: start; }
+  .roads-table tr:active { background: #f3f8f8; }
+  .roads-table td { padding: 0; border: none; display: block; text-align: left; }
+  .roads-table td.c-seq { display: none; }
+  .roads-table td.c-name { grid-column: 1 / 4; grid-row: 1; font-weight: 600; font-size: 15px; }
+  .roads-table td.c-code { grid-column: 4; grid-row: 1; justify-self: end; font-size: 12px; color: var(--muted); }
+  .roads-table td.c-comm { grid-column: 1 / 5; font-size: 13px; color: var(--muted); }
+  .roads-table td.c-comm::before { content: 'ชุมชน'; }
+  .roads-table td.c-land { grid-column: 1 / 3; font-size: 13px; }
+  .roads-table td.c-surf { grid-column: 3 / 5; font-size: 13px; }
+  .roads-table td.c-m { display: flex; flex-direction: column; font-size: 14px; margin-top: 4px; padding-top: 6px; border-top: 1px dashed var(--line); text-align: left; }
+  .roads-table td.c-m::before { content: attr(data-label); font-size: 11px; color: var(--muted); }
+  .roads-table td[colspan] { grid-column: 1 / -1; }
+}
+/* แท็บเล็ตแนวตั้ง: การ์ด 2 คอลัมน์ */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .roads-table tbody { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .roads-table tr { margin-bottom: 0; }
+  .brand-title .full { font-size: 15px; }
+}
+
+/* หน้าต่างแบบแผ่นล่าง (เมนู) บนมือถือ */
+@media (max-width: 760px) {
+  dialog.sheet { height: auto; max-height: 88dvh; margin: auto 0 0; border-radius: 18px 18px 0 0; }
+  dialog.sheet .m-head { padding-top: 14px; }
+  dialog.sheet .m-body { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+}
+
+/* มือถือแนวนอน (จอเตี้ย): หัวเว็บไม่ตรึง เมนูล่างเหลือแค่ไอคอน แผนที่ใช้พื้นที่เต็ม */
+@media (max-height: 520px) and (pointer: coarse) {
+  .topbar { position: static; }
+  .banner { padding-top: 6px; padding-bottom: 6px; }
+  .page-head .muted { display: none; }
+  #map { height: calc(100dvh - 130px); min-height: 200px; }
+  .legend { display: none; }
+}
+@media (max-height: 520px) and (max-width: 1024px) and (pointer: coarse) {
+  body { padding-bottom: calc(46px + env(safe-area-inset-bottom)); }
+  .topbar:has(+ main #view-map.active) .banner { display: none; }
+  #view-map .count { display: none; }
+  .tabs a, .tab-more { min-height: 46px; padding: 4px 2px; }
+  .tabs a > span, .tab-more > span { display: none !important; }
+  #map { height: calc(100dvh - 125px - env(safe-area-inset-bottom)); }
+}
