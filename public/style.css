@@ -427,6 +427,9 @@ body.rp-open { overflow: hidden; }
 .rp-t td.b { font-weight: 700; }
 .rp-t .rp-total td { font-weight: 700; background: #f2f2f2; }
 .rp-t thead { display: table-header-group; }
+.rp-t tr.rp-grp td { font-weight: 700; background: #f2f2f2; }
+.rp-t td.ind { padding-left: 12pt; }
+.rp-t td.c { text-align: center; }
 .rp-t tr { break-inside: avoid; page-break-inside: avoid; }
 .rp-t .sub { color: #333; }
 .nw { white-space: nowrap; }
