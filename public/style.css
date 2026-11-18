@@ -358,3 +358,6 @@ body { -webkit-tap-highlight-color: rgba(15, 94, 110, .15); }
   .tabs a > span, .tab-more > span { display: none !important; }
   #map { height: calc(100dvh - 125px - env(safe-area-inset-bottom)); }
 }
+.pill.warn { background: #fdeccc; color: #8a4b00; }
+.warn-text { color: #8a4b00; }
+a.warn-link { display: block; margin-top: 6px; color: #8a4b00; }

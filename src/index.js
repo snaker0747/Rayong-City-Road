@@ -25,6 +25,9 @@ const TABLES = {
 
 const ROLE_LEVEL = { user: 2, admin: 3 };
 const REG_CODE_RE = /^รย\.ถ\.\d-\d{4}$/;
+// การขึ้นทะเบียนทาง ใช้กับถนนประเภทที่ดินสาธารณะเท่านั้น (รวม "สาธารณะ/ส่วนบุคคล" ตามแท็บสรุปเดิม)
+const isPublicLand = (t) => typeof t === 'string' && t.trim().startsWith('สาธารณะ');
+const REG_PUBLIC_ONLY = 'ขึ้นทะเบียนทางได้เฉพาะถนนประเภทที่ดินสาธารณะ';
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -296,6 +299,7 @@ async function handleApi(request, env, url) {
       need(user, 'user');
       const rec = cleanRecord(table, await readJson(request), { partial: false });
       if (rec.reg_code && user.role !== 'admin') throw new HttpError(403, 'กำหนดรหัสทะเบียนทางได้เฉพาะผู้ดูแล');
+      if (table === 'roads' && rec.reg_code && !isPublicLand(rec.land_type)) throw new HttpError(400, REG_PUBLIC_ONLY);
       rec.updated_by = user.username;
       rec.created_at = rec.updated_at = nowIso();
       if (rec.seq == null) {
@@ -329,6 +333,17 @@ async function handleApi(request, env, url) {
         const rec = cleanRecord(table, body, { partial: true });
         if ('reg_code' in rec && rec.reg_code !== current.reg_code && user.role !== 'admin') {
           throw new HttpError(403, 'แก้รหัสทะเบียนทางได้เฉพาะผู้ดูแล');
+        }
+        if (table === 'roads') {
+          const nextLand = 'land_type' in rec ? rec.land_type : current.land_type;
+          const nextCode = 'reg_code' in rec ? rec.reg_code : current.reg_code;
+          // ตรวจเมื่อมีการตั้ง/เปลี่ยนรหัส หรือเปลี่ยนประเภทที่ดินของถนนที่มีรหัสอยู่ (ข้อมูลเดิมที่ไม่ตรงยังแก้ช่องอื่นได้)
+          const codeChanged = 'reg_code' in rec && rec.reg_code !== current.reg_code;
+          const landChanged = 'land_type' in rec && rec.land_type !== current.land_type;
+          if (nextCode && !isPublicLand(nextLand) && (codeChanged || landChanged)) {
+            throw new HttpError(400, landChanged && !codeChanged
+              ? `${REG_PUBLIC_ONLY} ถ้าเปลี่ยนเป็นประเภทอื่น ต้องลบรหัสทะเบียนออกก่อน (ผู้ดูแล)` : REG_PUBLIC_ONLY);
+          }
         }
         const changed = Object.keys(rec).filter((k) => rec[k] !== current[k]);
         if (!changed.length) return json(current);

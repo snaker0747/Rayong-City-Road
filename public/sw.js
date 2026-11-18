@@ -2,7 +2,7 @@
    - ไฟล์หน้าเว็บ: เปิดจากแคชทันที แล้วอัปเดตเบื้องหลัง (stale-while-revalidate)
    - /api/*: ไม่แคชเลย ข้อมูลมาจากเซิร์ฟเวอร์เสมอ
    - แผนที่ (tile): แคชไว้จำนวนจำกัด ช่วยให้เปิดซ้ำเร็วขึ้นและพอดูได้ตอนสัญญาณอ่อน */
-const VERSION = 'rcrnis-v2';
+const VERSION = 'rcrnis-v3';
 const STATIC = `${VERSION}-static`;
 const TILES = `${VERSION}-tiles`;
 const MAX_TILES = 600;

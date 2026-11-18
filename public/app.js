@@ -22,6 +22,15 @@ const surfGroup = (s) => {
   return 'อื่นๆ';
 };
 const surfColor = (s) => SURF_GROUPS.find((g) => g.key === surfGroup(s)).hex;
+// การขึ้นทะเบียนทาง ใช้กับถนนประเภทที่ดินสาธารณะเท่านั้น
+const isPublic = (r) => landGroup(r.land_type) === 'สาธารณะ';
+const regState = (r) => (isPublic(r) ? (r.reg_code ? 'yes' : 'no') : (r.reg_code ? 'check' : 'na'));
+const regCell = (r) => ({
+  yes: esc(r.reg_code),
+  no: '<span class="pill no">ยังไม่ขึ้น</span>',
+  check: `${esc(r.reg_code)} <span class="pill warn" title="มีรหัสทะเบียน แต่ประเภทที่ดินไม่ใช่สาธารณะ">ตรวจสอบ</span>`,
+  na: '<span class="muted small">ไม่ต้องขึ้นทะเบียน</span>',
+})[regState(r)];
 
 // นิยามฟอร์ม: type = text | num | int | range | community | textarea | latlng
 const FORMS = {
@@ -201,7 +210,9 @@ function route() {
 function renderDashboard() {
   const el = $('#view-dashboard');
   const R = S.roads.filter((r) => !r.is_deleted);
-  const reg = R.filter((r) => r.reg_code).length;
+  const PUB = R.filter(isPublic);
+  const reg = PUB.filter((r) => r.reg_code).length;
+  const regCheck = R.filter((r) => regState(r) === 'check').length;
   const withLen = R.filter((r) => r.length_km != null);
   const km = withLen.reduce((a, r) => a + r.length_km, 0);
 
@@ -216,7 +227,7 @@ function renderDashboard() {
   const byComm = S.communities.map((c) => {
     const rows = R.filter((r) => r.community_id === c.id);
     return {
-      c, total: rows.length, reg: rows.filter((r) => r.reg_code).length,
+      c, total: rows.length, pub: rows.filter(isPublic).length, reg: rows.filter((r) => regState(r) === 'yes').length,
       lands: LAND_GROUPS.map((l) => rows.filter((r) => landGroup(r.land_type) === l).length),
       km: rows.reduce((a, r) => a + (r.length_km || 0), 0),
     };
@@ -226,16 +237,16 @@ function renderDashboard() {
   const has = (r, ...ks) => ks.some((k) => r[k] != null && r[k] !== '');
   const comp = [
     ['พิกัด', (r) => has(r, 'lat') && has(r, 'lng')],
-    ['รหัสทะเบียนทาง', (r) => has(r, 'reg_code')],
+    ['ทะเบียนทาง (ถนนสาธารณะ)', (r) => has(r, 'reg_code'), PUB],
     ['ระยะทาง', (r) => has(r, 'length_km')],
     ['เขตทาง', (r) => has(r, 'row_w_min', 'row_w_max')],
     ['ความกว้างผิวจราจร', (r) => has(r, 'surf_w_min', 'surf_w_max')],
     ['ไหล่ทาง/ทางเท้า', (r) => has(r, 'shoulder_type_l', 'shoulder_type_r', 'shoulder_w_l_min', 'shoulder_w_r_min')],
     ['ระบบระบายน้ำ', (r) => has(r, 'drain_channel_l', 'drain_channel_r', 'drain_pipe_l', 'drain_pipe_r', 'manhole_l', 'manhole_r')],
     ['โคมไฟ', (r) => has(r, 'lamp_led', 'lamp_fluorescent', 'lamp_turtle')],
-  ].map(([label, f]) => ({ label, pct: R.length ? (R.filter(f).length / R.length) * 100 : 0 }));
+  ].map(([label, f, set = R]) => ({ label, pct: set.length ? (set.filter(f).length / set.length) * 100 : 0 }));
 
-  const pct = R.length ? (reg / R.length) * 100 : 0;
+  const pct = PUB.length ? (reg / PUB.length) * 100 : 0;
   if (isAdmin() && !S.roads.length && !S.communities.length) {
     el.innerHTML = `<div class="card" style="max-width:640px;margin:40px auto;text-align:center">
       <h2>ฐานข้อมูลยังว่าง</h2>
@@ -264,8 +275,9 @@ function renderDashboard() {
       <button id="btn-backup" ${isAdmin() ? '' : 'hidden'}>ดาวน์โหลดสำรองข้อมูลทั้งหมด (.xlsx)</button></div>
     <div class="grid kpis">
       <div class="card kpi"><div class="label">ถนนทั้งหมด</div><div class="value">${fmt(R.length)}</div><div class="sub">สายทาง ใน ${S.communities.length} ชุมชน</div></div>
-      <div class="card kpi"><div class="label">ขึ้นทะเบียนทางแล้ว</div><div class="value">${fmt(reg)}</div>
-        <div class="sub">${fmt(pct, 1)}% · ยังไม่ขึ้น ${fmt(R.length - reg)} สาย</div><div class="bar"><span style="width:${pct}%"></span></div></div>
+      <div class="card kpi"><div class="label">ขึ้นทะเบียนทางแล้ว</div><div class="value">${fmt(reg)} <span class="small">/ ${fmt(PUB.length)}</span></div>
+        <div class="sub">${fmt(pct, 1)}% ของถนนสาธารณะ · ยังไม่ขึ้น ${fmt(PUB.length - reg)} สาย</div><div class="bar"><span style="width:${pct}%"></span></div>
+        ${regCheck ? `<a href="#roads" class="small warn-link" data-go-check>มีรหัสทะเบียนในถนนที่ไม่ใช่สาธารณะ ${regCheck} สาย · ตรวจสอบ</a>` : ''}</div>
       <div class="card kpi"><div class="label">ระยะทางรวม</div><div class="value">${fmt(km, 1)} <span class="small">กม.</span></div><div class="sub">จาก ${fmt(withLen.length)} สายที่มีข้อมูลระยะทาง</div></div>
       <div class="card kpi"><div class="label">สะพาน</div><div class="value">${fmt(S.bridges.filter((b) => !b.is_deleted).length)}</div><div class="sub">แห่ง</div></div>
       <div class="card kpi"><div class="label">สวนสาธารณะ</div><div class="value">${fmt(S.parks.filter((b) => !b.is_deleted).length)}</div>
@@ -284,11 +296,11 @@ function renderDashboard() {
     </div>
     <div class="card"><h3>สรุปจำนวนถนนรายชุมชน</h3>
       <div class="table-wrap" style="max-height:none;border:none">
-      <table><thead><tr><th>ชุมชน</th><th class="num">จำนวนสายทาง</th><th class="num">ขึ้นทะเบียนแล้ว</th><th class="num">ยังไม่ขึ้น</th>
+      <table><thead><tr><th>ชุมชน</th><th class="num">จำนวนสายทาง</th><th class="num">ถนนสาธารณะ<br>ขึ้นทะเบียนแล้ว</th><th class="num">ถนนสาธารณะ<br>ยังไม่ขึ้น</th>
         ${LAND_GROUPS.map((l) => `<th class="num">${l}</th>`).join('')}<th class="num">ระยะทาง (กม.)</th></tr></thead>
-      <tbody>${byComm.map((b) => `<tr class="click" data-go-comm="${b.c.id}"><td>${esc(b.c.name)}</td><td class="num">${b.total}</td><td class="num">${b.reg || '–'}</td><td class="num">${b.total - b.reg || '–'}</td>
+      <tbody>${byComm.map((b) => `<tr class="click" data-go-comm="${b.c.id}"><td>${esc(b.c.name)}</td><td class="num">${b.total}</td><td class="num">${b.reg || '–'}</td><td class="num">${b.pub - b.reg || '–'}</td>
         ${b.lands.map((n) => `<td class="num">${n || '–'}</td>`).join('')}<td class="num">${b.km ? fmt(b.km, 2) : '–'}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td>รวม</td><td class="num">${R.length}</td><td class="num">${reg}</td><td class="num">${R.length - reg}</td>
+      <tfoot><tr><td>รวม</td><td class="num">${R.length}</td><td class="num">${reg}</td><td class="num">${PUB.length - reg}</td>
         ${LAND_GROUPS.map((_, i) => `<td class="num">${byComm.reduce((a, b) => a + b.lands[i], 0)}</td>`).join('')}<td class="num">${fmt(km, 2)}</td></tr></tfoot></table></div>
     </div>`;
 
@@ -296,6 +308,9 @@ function renderDashboard() {
     S.filter = { q: '', community: tr.dataset.goComm, land: '', surf: '', reg: '' };
     location.hash = 'roads';
   }));
+  $('[data-go-check]', el)?.addEventListener('click', () => {
+    S.filter = { q: '', community: '', land: '', surf: '', reg: 'check' };
+  });
   $$('[data-go-land]', el).forEach((a) => a.addEventListener('click', () => {
     S.filter = { q: '', community: '', land: a.dataset.goLand, surf: a.dataset.goSurf, reg: '' };
   }));
@@ -310,8 +325,7 @@ function filteredRoads() {
     if (f.community && String(r.community_id) !== String(f.community)) return false;
     if (f.land && landGroup(r.land_type) !== f.land) return false;
     if (f.surf && surfGroup(r.surface) !== f.surf) return false;
-    if (f.reg === 'yes' && !r.reg_code) return false;
-    if (f.reg === 'no' && r.reg_code) return false;
+    if (f.reg && regState(r) !== f.reg) return false;
     if (q && !`${r.name} ${r.reg_code || ''} ${r.note || ''}`.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -328,7 +342,7 @@ function filterBar(prefix) {
     <select id="${prefix}-community">${opt('', 'ทุกชุมชน', f.community)}${S.communities.map((c) => opt(c.id, c.name, f.community)).join('')}</select>
     <select id="${prefix}-land">${opt('', 'ทุกประเภทที่ดิน', f.land)}${[...LAND_GROUPS, 'อื่นๆ'].map((l) => opt(l, l, f.land)).join('')}</select>
     <select id="${prefix}-surf">${opt('', 'ทุกผิวจราจร', f.surf)}${SURF_GROUPS.map((g) => opt(g.key, g.key, f.surf)).join('')}</select>
-    <select id="${prefix}-reg">${opt('', 'สถานะทะเบียน: ทั้งหมด', f.reg)}${opt('yes', 'ขึ้นทะเบียนแล้ว', f.reg)}${opt('no', 'ยังไม่ขึ้นทะเบียน', f.reg)}</select>
+    <select id="${prefix}-reg">${opt('', 'สถานะทะเบียน: ทั้งหมด', f.reg)}${opt('yes', 'สาธารณะ: ขึ้นทะเบียนแล้ว', f.reg)}${opt('no', 'สาธารณะ: ยังไม่ขึ้นทะเบียน', f.reg)}${opt('check', 'มีรหัสแต่ไม่ใช่สาธารณะ (ตรวจสอบ)', f.reg)}${opt('na', 'ไม่ต้องขึ้นทะเบียน', f.reg)}</select>
     ${active ? `<button type="button" class="ghost small" data-clear="${prefix}">ล้างตัวกรอง</button>` : ''}</div>`;
 }
 
@@ -368,7 +382,7 @@ function renderRoads() {
     const rows = filteredRoads();
     $('#rf-count').textContent = `${fmt(rows.length)} สาย · ${fmt(rows.reduce((a, r) => a + (r.length_km || 0), 0), 2)} กม.`;
     $('#rf-body').innerHTML = rows.map((r) => `<tr class="click ${r.is_deleted ? 'deleted' : ''}" data-id="${r.id}">
-      <td class="num c-seq">${r.seq ?? ''}</td><td class="code c-code">${r.reg_code ? esc(r.reg_code) : '<span class="pill no">ยังไม่ขึ้น</span>'}</td>
+      <td class="num c-seq">${r.seq ?? ''}</td><td class="code c-code">${regCell(r)}</td>
       <td class="c-name">${esc(r.name)}</td><td class="c-comm">${esc(commName(r.community_id))}</td><td class="c-land">${esc(r.land_type)}</td>
       <td class="c-surf"><span class="dot" style="background:${surfColor(r.surface)}"></span>${esc(r.surface)}</td>
       <td class="num c-m" data-label="เขตทาง">${fmtRange(r.row_w_min, r.row_w_max)}</td><td class="num c-m" data-label="กว้าง">${fmtRange(r.surf_w_min, r.surf_w_max)}</td>
@@ -441,7 +455,7 @@ function renderMap() {
     legend.onAdd = () => {
       const d = L.DomUtil.create('div', 'legend');
       d.innerHTML = SURF_GROUPS.map((g) => `<div><span class="dot" style="background:${g.hex}"></span>${g.key}</div>`).join('')
-        + '<div><span class="dot" style="background:#fff;border:2px solid #d62828"></span>ยังไม่ขึ้นทะเบียน</div>'
+        + '<div><span class="dot" style="background:#fff;border:2px solid #d62828"></span>ถนนสาธารณะ ยังไม่ขึ้นทะเบียน</div>'
         + '<div><span class="dot" style="background:#2b7a4b"></span>สวนสาธารณะ</div>';
       return d;
     };
@@ -490,9 +504,9 @@ function drawMarkers() {
   $('#mf-count').textContent = `แสดง ${fmt(rows.length)} สาย`;
   for (const r of rows) {
     L.circleMarker([r.lat, r.lng], {
-      radius: COARSE ? 9 : 7, weight: r.reg_code ? 1 : 2.5, color: r.reg_code ? '#fff' : '#d62828',
+      radius: COARSE ? 9 : 7, weight: regState(r) === 'no' ? 2.5 : 1, color: regState(r) === 'no' ? '#d62828' : '#fff',
       fillColor: surfColor(r.surface), fillOpacity: 0.9,
-    }).bindPopup(`<b>${esc(r.name)}</b><br>${r.reg_code ? esc(r.reg_code) : '<span class="pill no">ยังไม่ขึ้นทะเบียน</span>'}<br>
+    }).bindPopup(`<b>${esc(r.name)}</b><br>${regCell(r)}<br>
       ชุมชน${esc(commName(r.community_id))} · ${esc(r.land_type)}<br>ผิว${esc(r.surface)} ${r.length_km ? '· ' + fmt(r.length_km, 3) + ' กม.' : ''}<br>
       <button data-open="roads:${r.id}" style="margin-top:6px">ดูรายละเอียด</button>`).addTo(roadLayer);
   }
@@ -540,6 +554,8 @@ function openDetail(table, id) {
     if (f.type === 'range') return fmtRange(rec[f.k + '_min'], rec[f.k + '_max']);
     if (f.type === 'community') return esc(commName(rec.community_id));
     if (f.type === 'latlng') return rec.lat ? `${rec.lat}, ${rec.lng} · <a href="https://www.google.com/maps?q=${rec.lat},${rec.lng}" target="_blank" rel="noopener">เปิด Google Maps</a>` : '<span class="pill no">ยังไม่มีพิกัด</span>';
+    if (f.k === 'reg_code' && table === 'roads') return regCell(rec)
+      + (regState(rec) === 'check' ? '<div class="small warn-text">ขึ้นทะเบียนทางได้เฉพาะถนนประเภทที่ดินสาธารณะ กรุณาตรวจสอบประเภทที่ดินหรือรหัสนี้</div>' : '');
     if (f.type === 'num' || f.type === 'int') return fmt(rec[f.k], 3);
     return esc(rec[f.k]);
   };
@@ -673,6 +689,23 @@ function openEdit(table, rec) {
         { enableHighAccuracy: true, timeout: 15000 },
       );
     });
+  }
+
+  // รหัสทะเบียนทาง: กรอกได้เฉพาะถนนประเภทที่ดินสาธารณะ
+  const landEl = $('#f-land_type', d), regEl = $('#f-reg_code', d);
+  if (landEl && regEl && isAdmin()) {
+    const hint = document.createElement('div');
+    hint.className = 'small';
+    regEl.after(hint);
+    const upd = () => {
+      const pub = landGroup(landEl.value.trim()) === 'สาธารณะ';
+      regEl.disabled = !pub && !regEl.value;
+      hint.className = 'small ' + (!pub && regEl.value ? 'warn-text' : 'muted');
+      hint.textContent = pub ? '' : regEl.value ? 'ประเภทที่ดินไม่ใช่สาธารณะ ควรลบรหัสนี้ออก' : 'ขึ้นทะเบียนได้เฉพาะถนนสาธารณะ';
+    };
+    landEl.addEventListener('input', upd);
+    regEl.addEventListener('input', upd);
+    upd();
   }
 
   form.addEventListener('submit', async (e) => {
@@ -887,7 +920,9 @@ async function logout() {
 // ---------------------------------------------------------------- export
 function roadSheetRows(rows) {
   return rows.map((r) => ({
-    'ลำดับที่': r.seq, 'รหัสทะเบียนทาง': r.reg_code || '', 'รายชื่อถนน': r.name, 'ชุมชน': commName(r.community_id),
+    'ลำดับที่': r.seq, 'รหัสทะเบียนทาง': r.reg_code || '',
+    'สถานะทะเบียน': { yes: 'ขึ้นทะเบียนแล้ว', no: 'ยังไม่ขึ้นทะเบียน', check: 'ตรวจสอบ: ไม่ใช่ถนนสาธารณะ', na: 'ไม่ต้องขึ้นทะเบียน' }[regState(r)],
+    'รายชื่อถนน': r.name, 'ชุมชน': commName(r.community_id),
     'พิกัด': r.lat ? `${r.lat}, ${r.lng}` : '', 'เขตทาง (ม.)': fmtRange(r.row_w_min, r.row_w_max), 'ระยะทาง (กม.)': r.length_km ?? '',
     'ประเภท': r.land_type || '', 'ผิวจราจร': r.surface || '', 'กว้าง (ม.)': fmtRange(r.surf_w_min, r.surf_w_max),
     'ไหล่ทาง ประเภท ซ้าย': r.shoulder_type_l || '', 'ไหล่ทาง ประเภท ขวา': r.shoulder_type_r || '',
