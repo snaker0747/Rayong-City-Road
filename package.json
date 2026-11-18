@@ -2,7 +2,7 @@
   "name": "roadsdata",
   "private": true,
   "version": "1.0.0",
-  "description": "ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (Rayong City Road Network Information System – RCRNIS) บน Cloudflare Workers + D1",
+  "description": "ระบบข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (Rayong City Road Network Information System – RCRNIS) บน Cloudflare Workers + D1",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

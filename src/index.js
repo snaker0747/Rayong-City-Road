@@ -1,4 +1,4 @@
-// RCRNIS – ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง — Cloudflare Worker (API) + Static Assets (หน้าเว็บ)
+// RCRNIS – ระบบข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง — Cloudflare Worker (API) + Static Assets (หน้าเว็บ)
 // ฝ่ายสาธารณูปโภค ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง
 
 import SEED from '../seed/seed.json';

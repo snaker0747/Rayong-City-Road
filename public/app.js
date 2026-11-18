@@ -1,4 +1,4 @@
-/* RCRNIS – ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง — หน้าเว็บ */
+/* RCRNIS – ระบบข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง — หน้าเว็บ */
 'use strict';
 
 // ---------------------------------------------------------------- config
@@ -855,7 +855,7 @@ function showLogin(msg = '') {
   $('#loading')?.remove();
   box.innerHTML = `<form class="card login-card" id="login-form">
     <h2>เข้าสู่ระบบ</h2>
-    <div class="muted small" style="margin-bottom:16px">ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง</div>
+    <div class="muted small" style="margin-bottom:16px">ระบบข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง</div>
     <div id="login-err">${msg ? `<div class="err">${esc(msg)}</div>` : ''}</div>
     <div class="field"><label for="lg-user">ชื่อผู้ใช้</label><input id="lg-user" name="username" autocomplete="username" required autofocus></div>
     <div class="field" style="margin-top:10px"><label for="lg-pass">รหัสผ่าน</label><input id="lg-pass" name="password" type="password" autocomplete="current-password" required></div>

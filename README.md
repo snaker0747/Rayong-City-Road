@@ -1,4 +1,4 @@
-# RCRNIS — ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง
+# RCRNIS — ระบบข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง
 
 **Rayong City Road Network Information System (RCRNIS)**
 
