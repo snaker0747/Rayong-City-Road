@@ -1,8 +1,8 @@
 /* RCRNIS service worker
-   - ไฟล์หน้าเว็บ: เปิดจากแคชทันที แล้วอัปเดตเบื้องหลัง (stale-while-revalidate)
+   - ไฟล์หน้าเว็บ: ดึงจากเซิร์ฟเวอร์ก่อน (ได้เวอร์ชันล่าสุด) ใช้ไฟล์ในเครื่องเฉพาะตอนออฟไลน์
    - /api/*: ไม่แคชเลย ข้อมูลมาจากเซิร์ฟเวอร์เสมอ
    - แผนที่ (tile): แคชไว้จำนวนจำกัด ช่วยให้เปิดซ้ำเร็วขึ้นและพอดูได้ตอนสัญญาณอ่อน */
-const VERSION = 'rcrnis-v3';
+const VERSION = 'rcrnis-v4';
 const STATIC = `${VERSION}-static`;
 const TILES = `${VERSION}-tiles`;
 const MAX_TILES = 600;
@@ -40,14 +40,17 @@ self.addEventListener('fetch', (e) => {
     if (url.pathname.startsWith('/api/')) return;
     // หน้าเว็บ (SPA) ทุก path ใช้หน้าแรก '/' (อย่าใช้ /index.html เพราะเซิร์ฟเวอร์ redirect มาที่ '/')
     const key = req.mode === 'navigate' ? '/' : req;
+    // network-first: ได้เวอร์ชันล่าสุดเสมอเมื่อมีเน็ต ใช้ไฟล์ที่เก็บไว้เฉพาะตอนออฟไลน์
     e.respondWith(caches.open(STATIC).then(async (c) => {
-      const hit = await c.match(key, { ignoreSearch: req.mode === 'navigate' });
-      const net = fetch(req).then((res) => {
+      try {
+        // คำขอเปิดหน้า (navigate) สร้างใหม่จาก URL เพราะใส่ option ให้คำขอแบบ navigate ไม่ได้
+        const res = await fetch(req.mode === 'navigate' ? new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : new Request(req, { cache: 'no-cache' }));
         // ไม่เก็บคำตอบที่ถูก redirect: เบราว์เซอร์ไม่ยอมใช้กับการเปิดหน้า
         if (res.ok && !res.redirected) c.put(key, res.clone());
         return res;
-      }).catch(() => hit || Response.error());
-      return hit || net;
+      } catch {
+        return (await c.match(key, { ignoreSearch: req.mode === 'navigate' })) || Response.error();
+      }
     }));
     return;
   }
