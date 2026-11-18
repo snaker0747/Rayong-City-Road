@@ -272,7 +272,8 @@ function renderDashboard() {
   el.innerHTML = `
     <div class="page-head"><div><h2>ภาพรวมข้อมูลถนน สะพาน และสวนสาธารณะ</h2>
       <div class="muted small">ตัวเลขทั้งหมดคำนวณจากข้อมูลจริงในระบบ อัปเดตทันทีเมื่อมีการแก้ไข</div></div>
-      <button id="btn-backup" ${isAdmin() ? '' : 'hidden'}>ดาวน์โหลดสำรองข้อมูลทั้งหมด (.xlsx)</button></div>
+      <div class="ph-actions"><button class="primary" id="btn-report">พิมพ์รายงาน</button>
+      <button id="btn-backup" ${isAdmin() ? '' : 'hidden'}>ดาวน์โหลดสำรองข้อมูลทั้งหมด (.xlsx)</button></div></div>
     <div class="grid kpis">
       <div class="card kpi"><div class="label">ถนนทั้งหมด</div><div class="value">${fmt(R.length)}</div><div class="sub">สายทาง ใน ${S.communities.length} ชุมชน</div></div>
       <div class="card kpi"><div class="label">ขึ้นทะเบียนทางแล้ว</div><div class="value">${fmt(reg)} <span class="small">/ ${fmt(PUB.length)}</span></div>
@@ -315,6 +316,7 @@ function renderDashboard() {
     S.filter = { q: '', community: '', land: a.dataset.goLand, surf: a.dataset.goSurf, reg: '' };
   }));
   $('#btn-backup', el)?.addEventListener('click', exportBackup);
+  $('#btn-report', el).addEventListener('click', () => openReport());
 }
 
 // ---------------------------------------------------------------- roads list

@@ -12,6 +12,12 @@
 
 [hidden] { display: none !important; }
 button, input, select, textarea, .leaflet-container { font-family: inherit; }
+/* ขนาดจริงของ TH Sarabun New (ไม่ขยาย) สำหรับเอกสารพิมพ์ ให้ 16pt เท่ากับในเอกสาร Word */
+@font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-BoldItalic.woff2') format('woff2'); font-weight: 700; font-style: italic; font-display: swap; }
+
 :root {
   --bg: #f4f6f5;
   --panel: #ffffff;
@@ -382,3 +388,84 @@ a.warn-link { display: block; margin-top: 6px; color: #8a4b00; }
 .kpi .value { line-height: 1.3; margin-top: 2px; }
 h2, h3 { line-height: 1.5; }
 td, th, dl.detail dt, dl.detail dd, .field label { line-height: 1.6; }
+
+/* ============================================================ รายงานสำหรับพิมพ์ */
+#report-view { position: fixed; inset: 0; z-index: 2500; background: #dfe4e3; display: flex; flex-direction: column; }
+body.rp-open { overflow: hidden; }
+.rp-bar { background: #fff; border-bottom: 1px solid var(--line); padding: 10px 16px; padding-top: calc(10px + env(safe-area-inset-top)); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.rp-bar-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rp-bar-title { font-size: 17px; }
+.rp-spacer { flex: 1; }
+.rp-opts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
+.rp-opts .wide { grid-column: 1 / -1; }
+.rp-secs { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; padding: 8px 12px; }
+.rp-secs label { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+.rp-secs input { width: 18px; height: 18px; min-height: 0; accent-color: var(--brand); }
+.rp-opt-toggle { display: none; }
+.rp-stage { flex: 1; overflow: auto; padding: 20px 8px 40px; -webkit-overflow-scrolling: touch; }
+
+/* กระดาษ A4 */
+.rp-paper { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  padding: 20mm 20mm 20mm 25mm; box-sizing: border-box; color: #000;
+  font-family: 'TH Sarabun Doc', 'TH Sarabun New', sans-serif; font-size: 16pt; line-height: 1.3; }
+.rp-paper * { font-family: inherit; }
+.rp-head { text-align: center; margin-bottom: 10pt; }
+.rp-logo { width: 22mm; height: 22mm; display: block; margin: 0 auto 4pt; border-radius: 4mm; }
+.rp-org { font-size: 16pt; font-weight: 700; line-height: 1.2; }
+.rp-org span { font-weight: 400; font-size: 14pt; }
+.rp-title { font-size: 20pt; font-weight: 700; margin: 8pt 0 0; line-height: 1.2; }
+.rp-sub { font-size: 16pt; }
+.rp-meta { font-size: 14pt; color: #333; border-bottom: 1.5pt solid #000; padding-bottom: 6pt; margin-top: 2pt; }
+.rp-h2 { font-size: 18pt; font-weight: 700; margin: 8pt 0 4pt; padding-top: 8pt; line-height: 1.3; color: #000; break-after: avoid; page-break-after: avoid; }
+.rp-paper p { margin: 2pt 0 6pt; text-indent: 1.25cm; }
+.rp-paper p.rp-note { text-indent: 0; font-size: 13pt; color: #333; margin-top: 3pt; }
+.rp-list { margin: 4pt 0 6pt; padding-left: 1.4cm; }
+.rp-list li { margin-bottom: 2pt; padding-top: 2pt; }
+.rp-kpi { width: 100%; border-collapse: separate; border-spacing: 4pt 0; margin: 4pt -4pt 8pt; }
+.rp-kpi td { border: 1pt solid #000; text-align: center; padding: 4pt 2pt; width: 20%; }
+.rp-kpi .v { font-size: 22pt; font-weight: 700; line-height: 1.1; }
+.rp-kpi .l { font-size: 13pt; line-height: 1.15; }
+.rp-t { width: 100%; border-collapse: collapse; font-size: 14pt; line-height: 1.25; margin: 4pt 0; }
+.rp-keep, .rp-kpi { break-inside: avoid; page-break-inside: avoid; }
+.rp-t th, .rp-t td { border: 0.75pt solid #000; padding: 4pt 4pt 2pt; line-height: inherit; vertical-align: top; text-align: left; position: static; background: none; color: #000; font-size: inherit; white-space: normal; }
+.rp-t th { font-weight: 700; text-align: center; background: #eee; vertical-align: middle; }
+.rp-t td.n { text-align: right; white-space: nowrap; }
+.rp-t th.n { text-align: center; }
+.rp-t tbody.rp-total td { font-weight: 700; background: #f4f4f4; }
+.rp-fixed { table-layout: fixed; }
+.rp-fixed td { overflow-wrap: anywhere; }
+.rp-t thead { display: table-header-group; }
+.rp-t tr { break-inside: avoid; page-break-inside: avoid; }
+.rp-t i { color: #555; }
+.rp-small { font-size: 12.5pt; }
+.rp-paper .rp-signs { display: block; margin-top: 20pt; padding-top: 6pt; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+.rp-sign { display: inline-block; vertical-align: top; width: 48%; text-align: center; line-height: 1.5; margin-bottom: 18pt; }
+.rp-sign:last-child { display: block; width: 50%; margin: 0 auto; }
+.rp-sign .r { font-weight: 700; }
+.rp-appendix { break-before: page; page-break-before: always; }
+.rp-paper section { break-inside: auto; }
+
+@media (max-width: 760px) {
+  .rp-opt-toggle { display: inline-flex; }
+  .rp-opts { display: none; grid-template-columns: 1fr 1fr; max-height: 55dvh; overflow: auto; }
+  .rp-opts.open { display: grid; }
+  .rp-opts .field:nth-child(-n+4) { grid-column: 1 / -1; }
+  .rp-bar-title { flex-basis: 100%; }
+  .rp-bar-row .rp-spacer { display: none; }
+  .rp-bar-row button { flex: 1; justify-content: center; }
+  .rp-stage { padding: 10px 8px 30px; }
+}
+
+/* ---------------------------------------------------------------- ตอนพิมพ์ */
+@page { size: A4; margin: 18mm 18mm 18mm 25mm;
+  @bottom-right { content: "หน้า " counter(page) " / " counter(pages); font-family: 'TH Sarabun Doc'; font-size: 12pt; }
+  @bottom-left { content: "RCRNIS เทศบาลนครระยอง"; font-family: 'TH Sarabun Doc'; font-size: 12pt; color: #555; } }
+@media print {
+  body.rp-open > *:not(#report-view) { display: none !important; }
+  body.rp-open { padding: 0 !important; background: #fff; overflow: visible; display: block; }
+  #report-view { position: static; display: block; background: #fff; }
+  .rp-bar { display: none !important; }
+  .rp-stage { padding: 0; overflow: visible; }
+  .rp-paper { width: auto; min-height: 0; box-shadow: none; padding: 0; margin: 0; zoom: 1 !important; }
+  .rp-t th, .rp-t .rp-total td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

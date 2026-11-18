@@ -2,12 +2,12 @@
    - ไฟล์หน้าเว็บ: ดึงจากเซิร์ฟเวอร์ก่อน (ได้เวอร์ชันล่าสุด) ใช้ไฟล์ในเครื่องเฉพาะตอนออฟไลน์
    - /api/*: ไม่แคชเลย ข้อมูลมาจากเซิร์ฟเวอร์เสมอ
    - แผนที่ (tile): แคชไว้จำนวนจำกัด ช่วยให้เปิดซ้ำเร็วขึ้นและพอดูได้ตอนสัญญาณอ่อน */
-const VERSION = 'rcrnis-v6';
+const VERSION = 'rcrnis-v7';
 const STATIC = `${VERSION}-static`;
 const TILES = `${VERSION}-tiles`;
 const MAX_TILES = 600;
 const PRECACHE = [
-  '/', '/app.js', '/style.css', '/manifest.webmanifest',
+  '/', '/app.js', '/report.js', '/style.css', '/manifest.webmanifest',
   '/vendor/leaflet.js', '/vendor/leaflet.css', '/vendor/xlsx.full.min.js',
   '/vendor/images/marker-icon.png', '/vendor/images/marker-icon-2x.png', '/vendor/images/marker-shadow.png',
   '/vendor/images/layers.png', '/vendor/images/layers-2x.png',
