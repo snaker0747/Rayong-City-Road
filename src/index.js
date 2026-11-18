@@ -43,7 +43,8 @@ const json = (data, status = 200, headers = {}) =>
 
 // ---------------------------------------------------------------- auth (ชื่อผู้ใช้ + รหัสผ่าน)
 const SESSION_COOKIE = 'rcrnis_session';
-const SESSION_HOURS = 12;
+const SESSION_HOURS = 12;   // ไม่ติ๊ก "จดจำการเข้าสู่ระบบ"
+const REMEMBER_DAYS = 30;   // ติ๊ก "จดจำการเข้าสู่ระบบ"
 const MAX_FAILS = 5;          // ใส่รหัสผิดเกินนี้ ล็อกบัญชีชั่วคราว
 const LOCK_MINUTES = 15;
 const PBKDF2_ITER = 100000;   // ค่าสูงสุดที่ Workers รองรับ
@@ -101,8 +102,9 @@ function readCookie(request, name) {
   return m ? m[1] : null;
 }
 
+// maxAge = null -> cookie หมดเมื่อปิดเบราว์เซอร์
 const sessionCookie = (token, url, maxAge) =>
-  `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${url.protocol === 'https:' ? '; Secure' : ''}`;
+  `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict${maxAge == null ? '' : `; Max-Age=${maxAge}`}${url.protocol === 'https:' ? '; Secure' : ''}`;
 
 async function getUser(request, env) {
   const token = readCookie(request, SESSION_COOKIE);
@@ -137,7 +139,9 @@ async function handleAuth(request, env, url, action, user) {
     if (!u.active) throw new HttpError(403, 'บัญชีนี้ถูกระงับการใช้งาน ติดต่อผู้ดูแลระบบ');
     const token = b64u(crypto.getRandomValues(new Uint8Array(32)));
     const now = nowIso();
-    const exp = new Date(Date.now() + SESSION_HOURS * 3600000).toISOString();
+    const remember = body.remember === true;
+    const ttlSec = remember ? REMEMBER_DAYS * 86400 : SESSION_HOURS * 3600;
+    const exp = new Date(Date.now() + ttlSec * 1000).toISOString();
     await env.DB.batch([
       env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now),
       env.DB.prepare('INSERT INTO sessions (token_hash, username, created_at, expires_at, user_agent) VALUES (?, ?, ?, ?, ?)')
@@ -145,7 +149,7 @@ async function handleAuth(request, env, url, action, user) {
       env.DB.prepare('UPDATE users SET failed_count = 0, locked_until = NULL, last_login_at = ? WHERE username = ?').bind(now, u.username),
     ]);
     return json({ username: u.username, role: u.role, name: u.display_name || u.username, must_change_pw: !!u.must_change_pw }, 200,
-      { 'set-cookie': sessionCookie(token, url, SESSION_HOURS * 3600) });
+      { 'set-cookie': sessionCookie(token, url, remember ? ttlSec : null) });
   }
 
   if (action === 'logout' && request.method === 'POST') {
