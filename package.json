@@ -1,0 +1,19 @@
+{
+  "name": "roadsdata",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (Rayong City Road Network Information System – RCRNIS) บน Cloudflare Workers + D1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply roadsdata-db --local",
+    "db:seed:local": "wrangler d1 execute roadsdata-db --local --file=seed/seed.sql",
+    "db:migrate": "wrangler d1 migrations apply roadsdata-db --remote",
+    "db:seed": "wrangler d1 execute roadsdata-db --remote --file=seed/seed.sql",
+    "db:export": "wrangler d1 export roadsdata-db --remote --output=backup-$(date +%Y%m%d).sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  },
+  "type": "module"
+}

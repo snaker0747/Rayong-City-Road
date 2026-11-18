@@ -1,0 +1,34 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "roadsdata",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "roadsdata-db",
+      // ใส่ค่า database_id ที่ได้จากคำสั่ง: npx wrangler d1 create roadsdata-db
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // โดเมนทีมของ Cloudflare Zero Trust เช่น rayongcity.cloudflareaccess.com
+    "ACCESS_TEAM_DOMAIN": "",
+    // Application Audience (AUD) Tag จากหน้าแอปใน Zero Trust > Access > Applications
+    "ACCESS_AUD": "",
+    // อีเมลที่เป็นผู้ดูแลเสมอ (คั่นด้วย ,) ใช้ตั้งต้นระบบ
+    "ADMIN_EMAILS": "",
+    // ผู้ที่ผ่าน Access แต่ยังไม่อยู่ในตารางผู้ใช้ ได้สิทธิ์นี้
+    "DEFAULT_ROLE": "viewer"
+  },
+  // ปิด preview URL เพื่อให้มีทางเข้าเดียวที่ผ่าน Cloudflare Access
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}

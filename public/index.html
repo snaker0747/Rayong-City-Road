@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RCRNIS | ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง</title>
+  <meta name="description" content="ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง (Rayong City Road Network Information System)">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f5e6e'/><path d='M12 4 9 28M20 4l3 24' stroke='white' stroke-width='2.5'/><path d='M16 6v4M16 14v4M16 22v4' stroke='%23ffd166' stroke-width='2.5'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/vendor/leaflet.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="banner">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="40" height="40" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0f5e6e"/><path d="M12 4 9 28M20 4l3 24" stroke="#fff" stroke-width="2.5"/><path d="M16 6v4M16 14v4M16 22v4" stroke="#ffd166" stroke-width="2.5"/></svg>
+      <div>
+        <div class="brand-title"><span class="abbr">RCRNIS</span><span class="full">ระบบสารสนเทศภูมิศาสตร์ข้อมูลโครงข่ายถนนในเขตเทศบาลนครระยอง</span></div>
+        <div class="brand-sub"><span class="full">Rayong City Road Network Information System</span><span class="short">ข้อมูลโครงข่ายถนน เทศบาลนครระยอง</span></div>
+      </div>
+    </div>
+    <div class="me" id="me"></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <a href="#dashboard" data-view="dashboard">ภาพรวม</a>
+      <a href="#roads" data-view="roads">ถนน</a>
+      <a href="#map" data-view="map">แผนที่</a>
+      <a href="#bridges" data-view="bridges">สะพาน</a>
+      <a href="#parks" data-view="parks">สวนสาธารณะ</a>
+      <a href="#history" data-view="history" data-role="admin" hidden>ประวัติ</a>
+      <a href="#users" data-view="users" data-role="admin" hidden>ผู้ใช้</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="view" id="view-dashboard"></section>
+    <section class="view" id="view-roads"></section>
+    <section class="view" id="view-map">
+      <div class="map-tools" id="map-tools"></div>
+      <div id="map"></div>
+    </section>
+    <section class="view" id="view-bridges"></section>
+    <section class="view" id="view-parks"></section>
+    <section class="view" id="view-history"></section>
+    <section class="view" id="view-users"></section>
+    <div class="loading" id="loading">กำลังโหลดข้อมูล…</div>
+  </main>
+
+  <footer class="footer">พัฒนาโดย ฝ่ายสาธารณูปโภค ส่วนการโยธา สำนักช่าง เทศบาลนครระยอง</footer>
+
+  <dialog id="modal"></dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/vendor/leaflet.js"></script>
+  <script src="/vendor/xlsx.full.min.js" defer></script>
+  <script src="/app.js" defer></script>
+</body>
+</html>
