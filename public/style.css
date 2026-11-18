@@ -13,6 +13,12 @@
 [hidden] { display: none !important; }
 button, input, select, textarea, .leaflet-container { font-family: inherit; }
 /* ขนาดจริงของ TH Sarabun New (ไม่ขยาย) สำหรับเอกสารพิมพ์ ให้ 16pt เท่ากับในเอกสาร Word */
+/* CS ChatThaiUI (CS@nok · CC BY 4.0) — ใช้กับหัวเว็บ หัวข้อ เมนู และตัวเลขสรุป; ตาราง/ฟอร์ม/รายงานพิมพ์ยังเป็น TH Sarabun
+   มีแค่น้ำหนักปกติ จึงปิดการทำตัวหนาเทียม (font-synthesis) ไม่ให้ตัวอักษรหนาทึบ */
+@font-face { font-family: 'CS ChatThaiUI'; src: url('/fonts/CSChatThaiUI.woff2') format('woff2');
+  font-weight: 100 900; font-style: normal; font-display: swap; size-adjust: 135%; }
+.brand-title, .brand-sub, h2, h3, .tabs a, .tab-more, .sb-toggle, .kpi .value, .kpi .label, .sbu-name, .rp-bar-title {
+  font-family: 'CS ChatThaiUI', 'TH Sarabun New', sans-serif; font-synthesis: none; }
 @font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Regular.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Bold.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: 'TH Sarabun Doc'; src: url('/fonts/THSarabunNew-Italic.woff2') format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
@@ -477,7 +483,7 @@ body.rp-open { overflow: hidden; }
 }
 
 /* ---------------------------------------------------------------- Sidebar (แท็บเล็ต/คอมพิวเตอร์) ย่อเป็นไอคอนได้ */
-.sb-toggle { display: none; }
+.sb-toggle, .sb-user { display: none; }
 @media (min-width: 761px) {
   html { --sb-w: 224px; }
   html.sb-mini { --sb-w: 68px; }
