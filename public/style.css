@@ -494,15 +494,15 @@ body.rp-open { overflow: hidden; }
   .banner .me { display: none; }
   .sb-user { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding: 12px 4px 0; border-top: 1px solid var(--line); }
   .sb-user:empty { display: none; }
-  .sbu-card { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 12px;
+  .sbu-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
     background: linear-gradient(135deg, var(--brand-2), #f7fbfb); border: 1px solid #d6e8ea; min-width: 0; }
   .sbu-avatar { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
     background: linear-gradient(135deg, #0f5e6e, #17808f); color: #fff; font-weight: 700; font-size: 18px; line-height: 1;
     box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #9fcfd5; }
   .sbu-avatar.admin { background: linear-gradient(135deg, #b4472f, #d9693f); box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #f0b8a6; }
-  .sbu-info { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; line-height: 1.3; }
-  .sbu-name { font-size: 14px; color: var(--ink); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sbu-info .role { font-size: 14px; line-height: 1.35; padding: 0 8px; }
+  .sbu-info { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; line-height: 1.7; }
+  .sbu-name { font-size: 14px; line-height: 1.7; padding-top: 1px; color: var(--ink); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sbu-info .role { font-size: 14px; line-height: 1.7; padding: 1px 10px 0; }
   .sbu-actions { display: flex; flex-direction: column; gap: 2px; }
   .sbu-btn { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 14px; margin: 0;
     border: none; border-radius: 10px; background: none; color: var(--muted); font: inherit; font-size: 14px; line-height: 1.2;
